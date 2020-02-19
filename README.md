@@ -1,1 +1,2 @@
 VehicleFramework
+Framework for vehicle cooperation
