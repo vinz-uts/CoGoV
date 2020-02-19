@@ -23,7 +23,7 @@ classdef ControlledVehicle < handle
         
         function init_position(obj,x,y)
             % init_position - init the vehicle initial position
-            % Set the vehicle and controller initial conditions relative to
+            % Set vehicle and controller initial conditions relative to
             % a steady position [x,y].
             f = obj.ctrl_sys.Fa(:,size(obj.ctrl_sys.sys.A,1)+1:end);
             F = obj.ctrl_sys.Fa(:,1:size(obj.ctrl_sys.sys.A,1));

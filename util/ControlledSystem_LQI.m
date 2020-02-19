@@ -1,6 +1,6 @@
 classdef ControlledSystem_LQI < handle
     %% CONTROLLED SYSTEM LQI
-    %  Define a time-continuous dynamic closed-loop system with a state-space model:
+    %  Define a time-discrete dynamic closed-loop system with a state-space model:
     %  z(k+1) = Φ*z(k) + G*r(k)
     %   y(k)  = Hy*z(k)
     %   c(k)  = Hc*z(k) + L*r(k)
@@ -25,7 +25,7 @@ classdef ControlledSystem_LQI < handle
             % ControlledSystem_LQI - Constructor
             % Create an istance of a controlled system with a optimal
             % control law.
-            % >> sys = ControlledSystem_LQI(sys,Tc,Fa,Cy,Phi,G,Hc,L)
+            % >> ctrl_sys = ControlledSystem_LQI(sys,Tc,Fa,Cy,Phi,G,Hc,L)
             obj.sys = sys;
             obj.Tc = Tc;
             obj.Fa = Fa;
