@@ -3,7 +3,7 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices 
-addpath(genpath('../util'));  addpath(genpath('../tbxmanager'));    addpath('CG');
+addpath(genpath('../util'));  addpath(genpath('../tbxmanager'));    addpath('../CG');
 vehicle_model
 
 %% Vehicles
@@ -29,7 +29,8 @@ adj_matrix = [-1  1  1;
 			   1  0 -1];
 
 %% Net parameters
-d_max = 2; % maximum distance between vehicles
+d_max = 1.5; % maximum distance between vehicles
+d_min = 1; % minimum distance between vehicles
 
 for i=1:N
 	% Vehicle i
@@ -51,18 +52,19 @@ for i=1:N
         end
     end
     
-    nx = size(vehicle{i}.ctrl_sys.Phi,1); % single vehicle [x,xc] dimension
+    %nx = size(vehicle{i}.ctrl_sys.Phi,1); % single vehicle [x,xc] dimension
     nc = size(vehicle{i}.ctrl_sys.Hc,1); % single vehicle c dimension
-    nxa = size(Phi,1); % vehicle i augmented-[x,xc] dimension
+    %nxa = size(Phi,1); % vehicle i augmented-[x,xc] dimension
     nca = size(Hc,1); % vehicle i augmented-c dimension
     T = [];     gi = [];
+    U = [];     hi = [];
     
-    % Farest neighbour constraints
     k = 0; % neighbour number
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
             k = k+1;
 			cnstr = zeros(4,nca);
+            % Farest neighbour constraints
             % x constraints
             cnstr(1,1) = 1; 
             cnstr(1,(k*nc)+1) = -1;
@@ -73,6 +75,7 @@ for i=1:N
             cnstr(3,(k*nc)+2) = -1;
             cnstr(4,2) = -1; 
             cnstr(4,(k*nc)+2) = 1;
+            
             if ~isempty(T)
                 T = [T;cnstr];
                 gi = [gi;[d_max,d_max,d_max,d_max]'];
@@ -80,18 +83,27 @@ for i=1:N
                 T = cnstr;
                 gi = [d_max,d_max,d_max,d_max]';
             end
+            
+            % Proximity neighbour constraints
+            if ~isempty(U)
+                U = [U;cnstr];
+                hi = [hi;[-d_min,-d_min,-d_min,-d_min]'];
+            else
+                U = cnstr;
+                hi = [-d_min,-d_min,-d_min,-d_min]';
+            end
+            
+            % Speed constraints
+                % Need change Hc,L matrix in model_vehicle
+
+            % Thrust constraints
+                % Need change Hc,L matrix in model_vehicle
+                
         end
+        
     end
-    
-    % Proximity neighbour constraints
-    
-    % Speed constraints
-    % Need change Hc,L matrix in model_vehicle
-    
-    % Thrust constraints
-    % Need change Hc,L matrix in model_vehicle
-    
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,eye(2),10,1e-5,false);
+
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,eye(2),10,1e-5,false);
 end
 
 
@@ -99,7 +111,7 @@ end
 Tf = 5; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % Recalculation references time
 r{1} = [4,0.5]'; % position references
-r{2} = [3,1.5]'; % position references
+r{2} = [3,1]'; % position references
 r{3} = [3,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
