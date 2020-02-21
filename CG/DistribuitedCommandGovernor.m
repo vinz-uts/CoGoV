@@ -5,32 +5,29 @@ classdef DistribuitedCommandGovernor < CommandGovernor
     %  other system) constraints.
     
     properties
-        U % proximity constraints matrix
-        hi % proximity constraints vector
+        U % remoteness constraints matrix 
+        hi % remoteness constraints vector
+        V % proximity constraints matrix
+        qi % proximity constraints vector
     end
     
+    
     methods
-        function obj = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,delta,dist_flag)
+        function obj = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,V,qi,Psi,k0,delta,dist_flag)
             % DistribuitedCommandGovernor - Constructor
             % Create an instance of a Distribuited Command Governor.
             obj = obj@CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0,delta,dist_flag);
             if nargin > 10
-                obj.U = U;
-                obj.hi = hi;
-                % C_k set extension
-                c = sdpvar(size(Hc,1),1);   c_d = sdpvar(size(Hc,1),1);
-                C_set = T*c <= gi;
-                B_del = norm(c)^2 <= delta; % δ-radius ball
-                
-                b = binvar(size(U,1)/2,1);
+                % Introducing binary slack variables for OR- constraints
+                b = binvar(size(V,1)/2,1);
                 B_diag = [];
-                for i=1:(size(U,1)/2)
+                for i=1:(size(V,1)/2)
                     B_diag = blkdiag(B_diag,b(i),~b(i));
                 end
-                obj.U = B_diag*U;
-                obj.hi = B_diag*hi;
-                
-                obj.C_k = robustify([ismember(c+c_d,C_set),ismember(c_d,B_del),uncertain(c_d)]); % set constriction
+                obj.V = B_diag*V; % proximity constraints matrix
+                obj.qi = B_diag*qi; % proximity constraints vector
+                obj.U = U; % remoteness constraints matrix
+                obj.hi = hi; % remoteness constraints vector
             end
         end
         
@@ -42,6 +39,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             w = [g;g_n];
             cnstr = ismember((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w,obj.C_k);
             cnstr = [cnstr obj.U*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w)<=obj.hi];
+            cnstr = [cnstr obj.V*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w)<=obj.qi];
             xk = x;
             if obj.dist_flag == 0
                 % Case: without disturbance
@@ -49,12 +47,15 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     xk = obj.Phi*xk+obj.G*w;
                     cnstr = [cnstr ismember(obj.Hc*xk+obj.L*w,obj.C_k)];
                     cnstr = [cnstr obj.U*(obj.Hc*xk+obj.L*w)<=obj.hi];
+                    cnstr = [cnstr obj.V*(obj.Hc*xk+obj.L*w)<=obj.qi];
                 end
             else
                 % Case: with disturbance
                 for k = 1:obj.k0
                     xk = obj.Phi*xk+obj.G*w;
                     cnstr = [cnstr ismember(obj.Hc*xk+obj.L*w,obj.C_k{k})];
+                    cnstr = [cnstr obj.U*(obj.Hc*xk+obj.L*w)<=obj.hi]; % verify
+                    cnstr = [cnstr obj.V*(obj.Hc*xk+obj.L*w)<=obj.qi]; % verify
                 end
             end
             % Objective function
@@ -64,7 +65,6 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             
             solvesdp(cnstr,obj_fun,options);
             g = double(g);
-        end
+        end    
     end
 end
-

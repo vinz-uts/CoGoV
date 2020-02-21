@@ -21,7 +21,7 @@ Use a constructor to create a new istance of this class:
 >>Initialize a state-space model with A,B,eye(n),0 matrix and 0 initial conditions.
  
 The system simulate with memory, each simulation start from the last state values of the previous simulation. For simulate the system with a costant input u for T seconds use the class function
-> sys.sim(u,T)
+> \>\> sys.sim(u,T)
 
 The simulation results is stored in the vectors:
 * sys.t := time vector
@@ -30,7 +30,7 @@ The simulation results is stored in the vectors:
 * sys.y := outputs vector
 
 Reset the simulation to t=0 and initial conditions using the class function
-> sys.reset()
+> \>\> sys.reset()
 
 #### ControlledSystem_LQI Class
 Define a time-discrete, with sample time Tc, dynamic closed-loop system:
@@ -50,7 +50,7 @@ Use a constructor to create a new istance of this class:
 > \>\> ctrl_sys = ControlledSystem_LQI(sys,Tc,Fa,Cy,Phi,G,Hc,L)
 
 The system simulate with memory, each simulation start from the last state values of the previous simulation. For simulate the system with a costant reference r for T seconds use the class function
-> ctrl_sys.sim(r,T)
+> \>\> ctrl_sys.sim(r,T)
 
 The simulation results is stored in the vectors:
 * ctrl_sys.sys.t := time vector
@@ -61,7 +61,7 @@ The simulation results is stored in the vectors:
 * ctrl_sys.r := references
 
 Reset the simulation to t=0 and initial conditions using the class function
-> ctrl_sys.reset() 
+> \>\> ctrl_sys.reset() 
 
 ### Functions
 #### plot_simulation

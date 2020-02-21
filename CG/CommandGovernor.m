@@ -35,8 +35,7 @@ classdef CommandGovernor
             c = sdpvar(size(Hc,1),1);   c_d = sdpvar(size(Hc,1),1);
             C_set = T*c <= gi;
             B_del = norm(c)^2 <= delta; % δ-radius ball
-            obj.C_k = robustify([ismember(c+c_d,C_set),ismember(c_d,B_del),uncertain(c_d)]); % set constriction
-            
+            obj.C_k = robustify([ismember(c+c_d,C_set),ismember(c_d,B_del),uncertain(c_d)]); % set constriction        
         end
         
         

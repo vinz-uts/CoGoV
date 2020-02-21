@@ -20,6 +20,10 @@ N = 3; % number of vehicles
     vehicle{3}.init_position(0,-1);
 %end
 
+Psi = eye(2); % vehicle's references weight matrix
+k0 = 10; % prediction horizon
+delta = 1e-5; % constraints tollerance
+
 %% Net configuration
 %   1
 %  / \
@@ -27,8 +31,10 @@ N = 3; % number of vehicles
 adj_matrix = [-1  1  1;
 			   1 -1  0;
 			   1  0 -1];
-
-%% Net parameters
+           
+% Vehicles swarm position constraints
+% ||(x,y)||∞ ≤ d_max
+% ||(x,y)||∞ ≥ d_min
 d_max = 1.5; % maximum distance between vehicles
 d_min = 1; % minimum distance between vehicles
 
@@ -52,45 +58,47 @@ for i=1:N
         end
     end
     
-    %nx = size(vehicle{i}.ctrl_sys.Phi,1); % single vehicle [x,xc] dimension
     nc = size(vehicle{i}.ctrl_sys.Hc,1); % single vehicle c dimension
-    %nxa = size(Phi,1); % vehicle i augmented-[x,xc] dimension
     nca = size(Hc,1); % vehicle i augmented-c dimension
     T = [];     gi = [];
     U = [];     hi = [];
+    V = [];     qi = [];
     
     k = 0; % neighbour number
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
             k = k+1;
+            % Split ||.||∞
 			cnstr = zeros(4,nca);
-            % Farest neighbour constraints
-            % x constraints
+            % split modules x constraints
             cnstr(1,1) = 1; 
             cnstr(1,(k*nc)+1) = -1;
             cnstr(2,1) = -1; 
             cnstr(2,(k*nc)+1) = 1;
-            % y constraints
+            % split modules y constraints
             cnstr(3,2) = 1; 
             cnstr(3,(k*nc)+2) = -1;
             cnstr(4,2) = -1; 
             cnstr(4,(k*nc)+2) = 1;
             
-            if ~isempty(T)
-                T = [T;cnstr];
-                gi = [gi;[d_max,d_max,d_max,d_max]'];
-            else
-                T = cnstr;
-                gi = [d_max,d_max,d_max,d_max]';
-            end
-            
-            % Proximity neighbour constraints
+            % Matrix for neighbour remoteness constraints
+            % U*c ≤ hi
             if ~isempty(U)
                 U = [U;cnstr];
-                hi = [hi;[-d_min,-d_min,-d_min,-d_min]'];
+                hi = [hi;[d_max,d_max,d_max,d_max]'];
             else
                 U = cnstr;
-                hi = [-d_min,-d_min,-d_min,-d_min]';
+                hi = [d_max,d_max,d_max,d_max]';
+            end
+            
+            % Matrix for neighbour proximity constraints
+            % V*c ≤ qi
+            if ~isempty(V)
+                V = [V;cnstr];
+                qi = [qi;[-d_min,-d_min,-d_min,-d_min]'];
+            else
+                V = cnstr;
+                qi = [-d_min,-d_min,-d_min,-d_min]';
             end
             
             % Speed constraints
@@ -103,7 +111,7 @@ for i=1:N
         
     end
 
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,eye(2),10,1e-5,false);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,U,hi,U,hi,V,qi,Psi,k0,delta,false);
 end
 
 
@@ -114,7 +122,7 @@ r{1} = [4,0.5]'; % position references
 r{2} = [3,1]'; % position references
 r{3} = [3,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
-
+tic
 for t=1:NT
     for i=1:N
         x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
@@ -137,14 +145,20 @@ for t=1:NT
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
 end
+disp(toc)
 
-%plot_simulation(vehicle);
-%% Plot Vehicles trajectory
+%% Plot Vehicles trajectory and velocities
 for i=1:N
+    % Trajectory
     figure(1);  hold on;
     plot(vehicle{i}.ctrl_sys.sys.x(1,:),vehicle{i}.ctrl_sys.sys.x(2,:),'.');
     plot(vehicle{i}.ctrl_sys.sys.x(1,end),vehicle{i}.ctrl_sys.sys.x(2,end),'o');
+    % Position
     figure(2); hold on;
     subplot(6,1,(i-1)*2+1);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(1,:));
     subplot(6,1,(i-1)*2+2);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(2,:));
+    % Velocities
+    figure(3); hold on;
+    subplot(6,1,(i-1)*2+1);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(3,:));
+    subplot(6,1,(i-1)*2+2);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(4,:));
 end
