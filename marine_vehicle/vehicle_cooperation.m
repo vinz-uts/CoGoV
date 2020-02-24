@@ -99,19 +99,36 @@ for i=1:N
             else
                 V = cnstr;
                 qi = [-d_min,-d_min,-d_min,-d_min]';
-            end
-            
-            % Speed constraints
-                % Need change Hc,L matrix in model_vehicle
-
-            % Thrust constraints
-                % Need change Hc,L matrix in model_vehicle
-                
+            end    
         end
-        
     end
+    % Speed and thrust constraints
+    % Need change Hc,L matrix in model_vehicle
+    % T*c ≤ b
+    Vx = 2; % max abs of speed along x - [m/s]
+    Vy = 2; % max abs of speed along y - [m/s]
+    Tm = 100; % max abs of motor thrust - [N]
 
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,U,hi,U,hi,V,qi,Psi,k0,delta,false);
+    T = [ 0  0  1  0  0  0;% zeros(1,k*nc);
+          0  0 -1  0  0  0;% zeros(1,k*nc);
+          0  0  0  1  0  0;% zeros(1,k*nc);
+          0  0  0 -1  0  0;% zeros(1,k*nc);
+          0  0  0  0  1  0;% zeros(1,k*nc);
+          0  0  0  0 -1  0;% zeros(1,k*nc);
+          0  0  0  0  0  1;% zeros(1,k*nc);
+          0  0  0  0  0 -1];% zeros(1,k*nc)];
+
+    gi = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
+    
+    Ta = T;
+    gia = gi;
+    for j=1:k
+        Ta = blkdiag(Ta,T);
+        gia = [gia;gi];
+    end
+    Ta = [Ta;U];    gia = [gia;hi];
+
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,Ta,gia,U,hi,V,qi,Psi,k0,delta,false);
 end
 
 
@@ -122,7 +139,7 @@ r{1} = [4,0.5]'; % position references
 r{2} = [3,1]'; % position references
 r{3} = [3,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
-tic
+
 for t=1:NT
     for i=1:N
         x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
@@ -145,7 +162,7 @@ for t=1:NT
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
 end
-disp(toc)
+
 
 %% Plot Vehicles trajectory and velocities
 for i=1:N

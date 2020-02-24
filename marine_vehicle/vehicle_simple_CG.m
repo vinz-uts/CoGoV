@@ -32,13 +32,13 @@ Vy = 2; % max abs of speed along y - [m/s]
 Tm = 100; % max abs of motor thrust - [N]
 
 T = [ 1  0  0  0 ;
-     -1  0  0  0 ;
+%     -1  0  0  0 ;
       0  1  0  0 ;
-      0 -1  0  0 ;
+%      0 -1  0  0 ;
       0  0  1  0 ;
-      0  0 -1  0 ;
-      0  0  0  1 ;
-      0  0  0 -1 ];
+%      0  0 -1  0 ;
+      0  0  0  1 ];
+%       0  0  0 -1 ];
   
 b = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
 

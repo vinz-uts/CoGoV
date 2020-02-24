@@ -78,8 +78,8 @@ P = feedback(P_ol,eye(2),-1);
 Phi = P.A;     G = P.B;    Hy = P.C;
 
 % Only position constraints
-Hc = [ eye(2)  zeros(2,4) ];
-L = zeros(2,2);
+%Hc = [ eye(2)  zeros(2,4) ];
+%L = zeros(2,2);
 
 % Speed and input constraints
 %Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
@@ -92,6 +92,6 @@ L = zeros(2,2);
 %L = zeros(4,2);
 
 % Position, speed and input constraints
-%Hc = [ eye(4)  zeros(4,2) ;
-%        -F         f      ];
-%L = zeros(6,2);
+Hc = [ eye(4)  zeros(4,2) ;
+        -F         f      ];
+L = zeros(6,2);
