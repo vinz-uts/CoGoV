@@ -24,6 +24,12 @@ Psi = eye(2); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
 delta = 1e-5; % constraints tollerance
 
+%% Vehicles constraints
+Vx = 2; % max abs of speed along x - [m/s]
+Vy = 2; % max abs of speed along y - [m/s]
+T_max = 100; % max abs of motor thrust - [N]
+
+
 %% Net configuration
 %   1
 %  / \
@@ -35,9 +41,10 @@ adj_matrix = [-1  1  1;
 % Vehicles swarm position constraints
 % ||(x,y)||∞ ≤ d_max
 % ||(x,y)||∞ ≥ d_min
-d_max = 1.5; % maximum distance between vehicles
-d_min = 1; % minimum distance between vehicles
+d_max = 1.5; % maximum distance between vehicles - [m]
+d_min = 1; % minimum distance between vehicles - [m]
 
+%% Augmented System and Command Governor construction
 for i=1:N
 	% Vehicle i
     % Augmented neighbour matrix
@@ -60,9 +67,9 @@ for i=1:N
     
     nc = size(vehicle{i}.ctrl_sys.Hc,1); % single vehicle c dimension
     nca = size(Hc,1); % vehicle i augmented-c dimension
+    % Constraints construction
     T = [];     gi = [];
     U = [];     hi = [];
-    V = [];     qi = [];
     
     k = 0; % neighbour number
     for j=1:N
@@ -82,53 +89,47 @@ for i=1:N
             cnstr(4,(k*nc)+2) = 1;
             
             % Matrix for neighbour remoteness constraints
-            % U*c ≤ hi
-            if ~isempty(U)
-                U = [U;cnstr];
-                hi = [hi;[d_max,d_max,d_max,d_max]'];
+            % T*c ≤ gi
+            if ~isempty(T)
+                T = [T;cnstr];
+                gi = [gi;[d_max,d_max,d_max,d_max]'];
             else
-                U = cnstr;
-                hi = [d_max,d_max,d_max,d_max]';
+                T = cnstr;
+                gi = [d_max,d_max,d_max,d_max]';
             end
             
             % Matrix for neighbour proximity constraints
-            % V*c ≤ qi
-            if ~isempty(V)
-                V = [V;cnstr];
-                qi = [qi;[-d_min,-d_min,-d_min,-d_min]'];
+            % U*c ≤ hi (row-by-row OR-ed constrains)
+            if ~isempty(U)
+                U = [U;cnstr];
+                hi = [hi;[-d_min,-d_min,-d_min,-d_min]'];
             else
-                V = cnstr;
-                qi = [-d_min,-d_min,-d_min,-d_min]';
+                U = cnstr;
+                hi = [-d_min,-d_min,-d_min,-d_min]';
             end    
         end
     end
-    % Speed and thrust constraints
-    % Need change Hc,L matrix in model_vehicle
-    % T*c ≤ b
-    Vx = 2; % max abs of speed along x - [m/s]
-    Vy = 2; % max abs of speed along y - [m/s]
-    Tm = 100; % max abs of motor thrust - [N]
-
-    T = [ 0  0  1  0  0  0;% zeros(1,k*nc);
-          0  0 -1  0  0  0;% zeros(1,k*nc);
-          0  0  0  1  0  0;% zeros(1,k*nc);
-          0  0  0 -1  0  0;% zeros(1,k*nc);
-          0  0  0  0  1  0;% zeros(1,k*nc);
-          0  0  0  0 -1  0;% zeros(1,k*nc);
-          0  0  0  0  0  1;% zeros(1,k*nc);
-          0  0  0  0  0 -1];% zeros(1,k*nc)];
-
-    gi = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
     
-    Ta = T;
-    gia = gi;
+    % Speed and thrust constraints
+    % T_*c ≤ gi_ 
+    T_ = [ 0  0  1  0  0  0 ;  % Single vehicle constraints matrix
+           0  0 -1  0  0  0 ;
+           0  0  0  1  0  0 ;
+           0  0  0 -1  0  0 ;
+           0  0  0  0  1  0 ;
+           0  0  0  0 -1  0 ;
+           0  0  0  0  0  1 ;
+           0  0  0  0  0 -1 ];
+    gi_ = [Vx,Vx,Vy,Vy,T_max,T_max,T_max,T_max]';
+    
+    Ta = T_;    ga = gi_;
     for j=1:k
-        Ta = blkdiag(Ta,T);
-        gia = [gia;gi];
+        Ta = blkdiag(Ta,T_);
+        ga = [ga;gi_];
     end
-    Ta = [Ta;U];    gia = [gia;hi];
+    T = [Ta;T];     gi = [ga;gi];
 
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,Ta,gia,U,hi,V,qi,Psi,k0,delta,false);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,delta,false);
 end
 
 
