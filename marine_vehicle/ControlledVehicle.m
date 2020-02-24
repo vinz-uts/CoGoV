@@ -1,6 +1,6 @@
 classdef ControlledVehicle < handle
     %% CONTROLLED VEHICLE
-    %  Define an abstraction of a controlled vehicle with a command
+    %  Defines an abstraction of a controlled vehicle with a command
     %  governor.
     
     properties

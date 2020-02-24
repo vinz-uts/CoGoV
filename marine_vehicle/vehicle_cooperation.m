@@ -20,16 +20,6 @@ N = 3; % number of vehicles
     vehicle{3}.init_position(0,-1);
 %end
 
-Psi = eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
-delta = 1e-5; % constraints tollerance
-
-%% Vehicles constraints
-Vx = 2; % max abs of speed along x - [m/s]
-Vy = 2; % max abs of speed along y - [m/s]
-T_max = 100; % max abs of motor thrust - [N]
-
-
 %% Net configuration
 %   1
 %  / \
@@ -37,12 +27,23 @@ T_max = 100; % max abs of motor thrust - [N]
 adj_matrix = [-1  1  1;
 			   1 -1  0;
 			   1  0 -1];
-           
+
+%% Vehicles constraints
 % Vehicles swarm position constraints
 % ||(x,y)||∞ ≤ d_max
 % ||(x,y)||∞ ≥ d_min
 d_max = 1.5; % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
+
+% Vehicles input/speed constraints
+Vx = 2; % max abs of speed along x - [m/s]
+Vy = 2; % max abs of speed along y - [m/s]
+T_max = 100; % max abs of motor thrust - [N]
+
+%% Command Governor parameters
+Psi = eye(2); % vehicle's references weight matrix
+k0 = 10; % prediction horizon
+delta = 1e-5; % constraints tollerance
 
 %% Augmented System and Command Governor construction
 for i=1:N
@@ -78,11 +79,17 @@ for i=1:N
             % Split ||.||∞
 			cnstr = zeros(4,nca);
             % split modules x constraints
+            % |-- i --       -- j --     |
+            % | 1 0 ..  ...  -1 0 ..  ...|
+            % |-1 0 ..  ...   1 0 ..  ...|
             cnstr(1,1) = 1; 
             cnstr(1,(k*nc)+1) = -1;
             cnstr(2,1) = -1; 
             cnstr(2,(k*nc)+1) = 1;
             % split modules y constraints
+            % |-- i --       -- j --     |
+            % |0  1 ..  ...  0 -1 ..  ...|
+            % |0 -1 ..  ...  0  1 ..  ...|
             cnstr(3,2) = 1; 
             cnstr(3,(k*nc)+2) = -1;
             cnstr(4,2) = -1; 
@@ -111,8 +118,9 @@ for i=1:N
     end
     
     % Speed and thrust constraints
-    % T_*c ≤ gi_ 
-    T_ = [ 0  0  1  0  0  0 ;  % Single vehicle constraints matrix
+    % T_*c_ ≤ gi_       single vehicle constraints
+    %      x  y Vx Vy Tx Ty
+    T_ = [ 0  0  1  0  0  0 ;
            0  0 -1  0  0  0 ;
            0  0  0  1  0  0 ;
            0  0  0 -1  0  0 ;
@@ -132,51 +140,3 @@ for i=1:N
     vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,delta,false);
 end
 
-
-%% Simulation Parallel CG
-Tf = 5; % simulation time
-Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % Recalculation references time
-r{1} = [4,0.5]'; % position references
-r{2} = [3,1]'; % position references
-r{3} = [3,-1.5]'; % position references
-NT = ceil(Tf/Tc_cg); % simulation steps number
-
-for t=1:NT
-    for i=1:N
-        x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
-        xc = vehicle{i}.ctrl_sys.xci; % controller current state
-        xa = [x;xc];
-        g_n = [];
-        for j=1:N
-            if adj_matrix(i,j) == 1 % i,j is neighbour
-                g_n = [g_n;vehicle{j}.g];
-                x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
-                xc = vehicle{j}.ctrl_sys.xci; % controller current state
-                xa = [xa;x;xc];
-            end
-        end
-        
-        g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
-        vehicle{i}.g = g;
-    end
-    for i=1:N
-        vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
-    end
-end
-
-
-%% Plot Vehicles trajectory and velocities
-for i=1:N
-    % Trajectory
-    figure(1);  hold on;
-    plot(vehicle{i}.ctrl_sys.sys.x(1,:),vehicle{i}.ctrl_sys.sys.x(2,:),'.');
-    plot(vehicle{i}.ctrl_sys.sys.x(1,end),vehicle{i}.ctrl_sys.sys.x(2,end),'o');
-    % Position
-    figure(2); hold on;
-    subplot(6,1,(i-1)*2+1);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(1,:));
-    subplot(6,1,(i-1)*2+2);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(2,:));
-    % Velocities
-    figure(3); hold on;
-    subplot(6,1,(i-1)*2+1);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(3,:));
-    subplot(6,1,(i-1)*2+2);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(4,:));
-end
