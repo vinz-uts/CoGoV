@@ -112,6 +112,9 @@ The model is discretized using *forward Euler* approximation with a specificated
 #### vehicle_simple_cg
 Simulation scenario for a single vehicle with velocities and thrust constraints using a command governor.
 
+#### vehicle_circle_CG
+Simulation scenario for a single vehicle with velocities and thrust constraints using a command governor for tracking a circle.
+
 #### vehicle_cooperation
 Configure a little vehicle swarm composed by 3 vehicle organized in a following net
 >   1

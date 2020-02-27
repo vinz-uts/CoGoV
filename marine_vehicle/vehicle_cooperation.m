@@ -30,8 +30,8 @@ adj_matrix = [-1  1  1;
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)||∞ ≤ d_max
-% ||(x,y)||∞ ≥ d_min
+% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
+% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 1.5; % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
