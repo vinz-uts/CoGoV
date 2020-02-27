@@ -21,8 +21,8 @@ for t=1:NT
         g_n = [];
         for j=1:N
             if adj_matrix(i,j) == 1 % i,j is neighbour
-                g_n = [g_n;old_g{j}]; %[g_n;vehicle{j}.g];
-                %g_n = [g_n;vehicle{j}.g];
+                %g_n = [g_n;old_g{j}]; %[g_n;vehicle{j}.g];
+                g_n = [g_n;vehicle{j}.g];
                 x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
                 xc = vehicle{j}.ctrl_sys.xci; % controller current state
                 xa = [xa;x;xc];
@@ -30,7 +30,12 @@ for t=1:NT
         end
         
         g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
-        vehicle{i}.g = g;
+        if ~isempty(g)
+            vehicle{i}.g = g;
+        else
+            disp('WARN: old references');
+            t,i
+        end
     end
     for i=1:N
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);

@@ -25,7 +25,12 @@ for t=1:NT
         end
     end
     g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
-    vehicle{i}.g = g;
+    if ~isempty(g)
+        vehicle{i}.g = g;
+    else
+       disp('WARN: old references');
+       t,i
+    end
     
     for j=1:N
         vehicle{j}.ctrl_sys.sim(vehicle{j}.g,Tc_cg);
