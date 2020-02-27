@@ -113,10 +113,18 @@ The model is discretized using *forward Euler* approximation with a specificated
 Simulation scenario for a single vehicle with velocities and thrust constraints using a command governor.
 
 #### vehicle_cooperation
-Simulation scenario for a little vehicle swarm composed by 3 vehicle in a following net configuration
+Configure a little vehicle swarm composed by 3 vehicle organized in a following net
 >   1
+
 >  / \\
+
 > 2   3
+
+#### swarm_parallel
+Simulation scenario for vehicle swarm with parallel reference recalculation approach.
+
+#### swarm_sequential
+Simulation scenario for vehicle swarm with sequential reference recalculation approach.
 
 ## CG
 ### Classes
