@@ -46,7 +46,7 @@ b = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
 Psi = [ 1  0 ;
         0  1 ];
     
-k0 = 10;    delta = 1e-5;
+k0 = 10;
 
 %%%%%% WARN: if not selected correct constraints matrix in vehicle_model.m
 Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
@@ -56,7 +56,7 @@ vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 %%%%%%
 
 %% Command Governor
-vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0,delta,false);
+vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 
 %% Simulation
 Tf = 3; % simulation time

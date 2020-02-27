@@ -1,3 +1,6 @@
+%% Close plot windows
+close all;
+
 %% Configure vehicle swarm
 vehicle_cooperation
 

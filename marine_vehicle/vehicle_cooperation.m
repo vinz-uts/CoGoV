@@ -1,6 +1,6 @@
 %% Clear workspace
 clear all;
-close all;
+%close all;
 
 %% Load vehicles' model matrices 
 addpath(genpath('../util'));  addpath(genpath('../tbxmanager'));    addpath('../CG');
@@ -43,7 +43,6 @@ T_max = 100; % max abs of motor thrust - [N]
 %% Command Governor parameters
 Psi = eye(2); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
-delta = 1e-5; % constraints tollerance
 
 %% Augmented System and Command Governor construction
 for i=1:N
@@ -137,6 +136,5 @@ for i=1:N
     end
     T = [Ta;T];     gi = [ga;gi];
 
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,delta,false);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
 end
-

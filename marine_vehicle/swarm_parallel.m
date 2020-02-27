@@ -1,3 +1,6 @@
+%% Close plot windows
+close all;
+
 %% Configure vehicle swarm
 vehicle_cooperation
 
@@ -21,8 +24,8 @@ for t=1:NT
         g_n = [];
         for j=1:N
             if adj_matrix(i,j) == 1 % i,j is neighbour
-                %g_n = [g_n;old_g{j}]; %[g_n;vehicle{j}.g];
-                g_n = [g_n;vehicle{j}.g];
+                g_n = [g_n;old_g{j}]; %[g_n;vehicle{j}.g];
+                %g_n = [g_n;vehicle{j}.g];
                 x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
                 xc = vehicle{j}.ctrl_sys.xci; % controller current state
                 xa = [xa;x;xc];
