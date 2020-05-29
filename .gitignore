@@ -2,3 +2,5 @@
 tbxmanager/
 
 *.m~
+*.autosave
+*.slxc
