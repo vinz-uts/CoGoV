@@ -1,7 +1,8 @@
 # Vehicle Framework
 
-Matlab framework for manage single or vehicle swarm in standalone or cooperative scenario.<br/>
+Matlab framework for manage single vehicle or vehicles swarm in standalone or cooperative scenario.  
 Directory and file organization are the following:
+![Class diagram](img/UML_class.png)
 
 ## util
 ### Classes
@@ -19,6 +20,33 @@ Use a constructor to create a new istance of this class:
 
 > \>\> sys = StateSpaceSystem(A,B)
 >>Initialize a state-space model with A,B,eye(n),0 matrix and 0 initial conditions.
+ 
+The system simulate with memory, each simulation start from the last state values of the previous simulation. For simulate the system with a costant input u for T seconds use the class function
+> \>\> sys.sim(u,T)
+
+The simulation results is stored in the vectors:
+* sys.t := time vector
+* sys.u := inputs vector
+* sys.x := states vector
+* sys.y := outputs vector
+
+Reset the simulation to t=0 and initial conditions using the class function
+> \>\> sys.reset()
+
+#### NonlinearSystem Class
+Define a time-continuous dynamic system with a nonlinear model:
+>      dx = f(x,u)
+>      y = g(x,u)
+ 
+Use a constructor to create a new istance of this class:
+> \>\> sys = NonlinearSystem(f,g,nx,nu,ny,xi)
+>> Initialize a nonlinear system with state-transition matlab function f, output matlab function g and xi as initial conditions. States, Input, Output dimension: nx, nu, ny.
+
+> \>\> sys = NonlinearSystem(f,g,nx,nu,ny)
+>> Initialize a nonlinear system with state-transition matlab function f, output matlab function g and 0 as initial conditions. States, Input, Output dimension: nx, nu, ny.
+
+> \>\> sys = NonlinearSystem(f,nx,nu)
+>> Initialize a nonlinear system with state-transition matlab function f, output matlab function 'full_state' and 0 as initial conditions. States, Input dimension: nx, nu (ny=nx).
  
 The system simulate with memory, each simulation start from the last state values of the previous simulation. For simulate the system with a costant input u for T seconds use the class function
 > \>\> sys.sim(u,T)
