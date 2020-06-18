@@ -21,15 +21,21 @@ classdef ControlledVehicle < handle
         end
         
         
-        function init_position(obj,x,y)
+        function init_position(obj,x,y,th)
             % init_position - init the vehicle initial position
             % Set vehicle and controller initial conditions relative to
-            % a steady position [x,y].
-            f = obj.ctrl_sys.Fa(:,size(obj.ctrl_sys.sys.A,1)+1:end);
-            F = obj.ctrl_sys.Fa(:,1:size(obj.ctrl_sys.sys.A,1));
-            obj.ctrl_sys.sys.xi = [x,y,0,0]';
+            % a steady position [x,y] or [x,y,ϑ].
+            f = obj.ctrl_sys.Fa(:,obj.ctrl_sys.sys.nx+1:end);
+            F = obj.ctrl_sys.Fa(:,1:obj.ctrl_sys.sys.nx);
+            if nargin == 3
+                obj.ctrl_sys.sys.xi = [x,y,0,0]';
+                obj.g = [x,y]';
+            else
+                obj.ctrl_sys.sys.xi = [x,y,th,0,0,0]';
+                obj.g = [x,y,th]';
+            end
             obj.ctrl_sys.xci = f\F*obj.ctrl_sys.sys.xi;
-            obj.g = [x,y]';
+            
         end
         
     end

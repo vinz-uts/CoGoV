@@ -5,14 +5,17 @@ classdef StateSpaceSystem < handle
     %        y = C*x + D*u
     
     properties
-        A % state-space model A matrix
-        B % state-space model B matrix
-        C % state-space model C matrix
-        D % state-space model D matrix
-        t % simulation time array
-        u % simulation inputs array
-        x % simulation states array
-        y % simulation outputs array
+        A  % state-space model A matrix
+        B  % state-space model B matrix
+        C  % state-space model C matrix
+        D  % state-space model D matrix
+        nx % state dimension
+        nu % input dimension
+        ny % output dimension
+        t  % simulation time array
+        u  % simulation inputs array
+        x  % simulation states array
+        y  % simulation outputs array
         xi % initial conditions
     end
     
@@ -49,6 +52,9 @@ classdef StateSpaceSystem < handle
             else
                 obj.xi = zeros(size(A,1),1);
             end
+            obj.nx = size(obj.A,1);
+            obj.nu = size(obj.B,2);
+            obj.ny = size(obj.C,1);
         end
             
         
@@ -87,7 +93,7 @@ classdef StateSpaceSystem < handle
                if ~isempty(obj.x)
                     obj.xi = obj.x(:,1);
                 else
-                    obj.xi = zeros(size(obj.A,1),1);
+                    obj.xi = zeros(obj.nx,1);
                end
            else
                obj.xi = xi;

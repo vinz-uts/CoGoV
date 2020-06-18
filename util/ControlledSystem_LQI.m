@@ -6,7 +6,7 @@ classdef ControlledSystem_LQI < handle
     %   c(k)  = Hc*z(k) + L*r(k)
      
     properties
-        sys % StateSpaceSystem
+        sys % SystemModel
         Tc % sampling time
         Fa % Optimal feedback control gain
         Cy % tracking system outputs
@@ -47,9 +47,11 @@ classdef ControlledSystem_LQI < handle
             N = ceil(T/(obj.Tc)); % simulation steps number
             e = obj.xci; % initial error value
             nt = length(obj.sys.t); % length of last simulation
+            %nx = size(obj.sys.A,1);
+            nx = obj.sys.nx;
 
             for i=1:N
-                u = -obj.Fa(:,1:size(obj.sys.A,1))*obj.sys.xi + obj.Fa(:,size(obj.sys.A,1)+1:end)*e;
+                u = -obj.Fa(:,1:nx)*obj.sys.xi + obj.Fa(:,nx+1:end)*e;
                 obj.sys.sim(u,obj.Tc); % simulate system
                 
                 obj.r = [obj.r r.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];

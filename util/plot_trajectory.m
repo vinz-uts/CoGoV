@@ -17,6 +17,7 @@ function plot_trajectory(x,y,th,N,d)
         d_ = d;
     end
     
+    figure();
     plot(x,y);  hold on; % plot trajectory
     
     % plot points orientation

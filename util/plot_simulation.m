@@ -24,8 +24,8 @@ function plot_simulation(sys,opt)
             sys = sys.sys;
         end
     end
-    nx = size(sys.A,1);
-    nu = size(sys.B,2);
+    nx = sys.nx; %nx = size(sys.A,1);
+    nu = sys.nu; %nu = size(sys.B,2);
     % States plots
     if contains(opt,'x')
         figure(1);  hold on;

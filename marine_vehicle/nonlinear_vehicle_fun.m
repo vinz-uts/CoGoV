@@ -3,7 +3,11 @@ function dz = nonlinear_vehicle_fun(z,u)
     %  Nonlinear model of a marine omnidiretional vehicle
     %  
     %  States:                   Inputs:
-    %  z = [x,y,ϑ,u,v,r]'        u = [Tu,Tv,Tr]' 
+    %  z = [x,y,ϑ,u,v,r]'        u = [Tx,Ty,Tϑ]'
+    %
+    %       |Tu|   | cos(ϑ) sin(ϑ) 0| |Tx|
+    %  u' = |Tv| = |-sin(ϑ) cos(ϑ) 0|*|Ty|
+    %       |Tr|   |   0      0    1| |Tϑ|
     % 
     %  Dynamic Model:
     %  |dx|   |0  0  0  cos(ϑ) -sin(ϑ)  0  | |x|   | 0   0   0 | 
@@ -18,6 +22,11 @@ function dz = nonlinear_vehicle_fun(z,u)
     J = 3;  % inertia - [Kg m²]
     c = 1;  % friction coefficient - [-]
     % It's possible to modify c as c(u,v,r)
+    
+    R = [ cos(z(3)) sin(z(3)) 0 ;
+         -sin(z(3)) cos(z(3)) 0 ;
+             0         0      1 ];
+    u = R*u;
     
     dz(1) = cos(z(3))*z(4) - sin(z(3))*z(5);
     dz(2) = sin(z(3))*z(4) + cos(z(3))*z(5);

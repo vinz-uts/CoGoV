@@ -1,3 +1,17 @@
+%% Model for marine vehicle %%
+% Dynamic model for a omnidirectional vehicle on a plane.
+% 
+% States:                   Inputs:
+% z = [x,y,ϑ,dx,dy,dϑ]'          u = [Tx,Ty,Tϑ]' 
+% 
+% Dynamic Model:
+%                            dx = dx
+% m*ddx +  c*dx = Tx  -->    dy = dy
+% m*ddy +  c*dy = Ty  -->    dϑ = dϑ
+% J*ddϑ + ct*dϑ = Tϑ  -->    ddx =  -c/m*dx + 1/m*Tx
+%                            ddy =  -c/m*dy + 1/m*Ty
+%                            ddϑ = -ct/J*dϑ + 1/J*Tϑ
+
 %% Model parameters
 m = 10; % mass - [Kg]
 J = 3;  % inertia coefficient - [Kg m²]
@@ -65,7 +79,7 @@ Q = [0  0  0  0  0  0  0  0  0  ;
      0  0  0  0  0  0  0  0  0  ;
      0  0  0  0  0  0 100 0  0  ;
      0  0  0  0  0  0  0 100 0  ;
-     0  0  0  0  0  0  0  0 300 ];
+     0  0  0  0  0  0  0  0 900 ];
  
 R = [ 0.1  0   0  ;
        0  0.1  0  ;
@@ -97,13 +111,3 @@ L = zeros(6,3);
 %        -F         f      ];
 %L = zeros(9,3);
 
-%% Extend position control gain to the nonlinear model
-%Fa = [Fa(:,1:2),[0,0]',Fa(:,3:4),[0,0]',Fa(:,5:6)];
-%Fa = [Fa; zeros(1,8)];
-
-%% Actuator allocation matrix
-%alpha = pi/4;
-%l = 1; 
-%Sig = [  sin(alpha)  sin(alpha) -sin(alpha) -sin(alpha) ;
-%        -cos(alpha)  cos(alpha) -cos(alpha)  cos(alpha) ;
-%           -l/2         l/2         l/2        -l/2     ];
