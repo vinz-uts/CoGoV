@@ -8,8 +8,8 @@ function plot_trajectory(x,y,th,N,d)
     %  >> plot_trajectory(x,y,th,N)
     %  >> plot_trajectory(x,y,th,N,d)
     
-    N_ = 10; % points density
-    d_ = 0.01; % triangle dimension
+    N_ = 33; % points density
+    d_ = 0.07; % "triangle" dimension
     if nargin > 3
         N_ = N;
     end
@@ -17,12 +17,16 @@ function plot_trajectory(x,y,th,N,d)
         d_ = d;
     end
     
+    v = d_.*[1 -1 -0.6 -1 1;0 -1 0 1 0];% base "triangle" vertices
+    
     figure();
     plot(x,y);  hold on; % plot trajectory
+    axis equal
     
     % plot points orientation
     for i = 1:N_:length(x)
-       p_i.x = [x(i)+d_*cos(th(i)); x(i)-d_*cos(pi/3-th(i)); x(i)-d_*sin(pi/3-th(i)); x(i)+d_*cos(th(i))];
-       p_i.y = [y(i)+d_*sin(th(i)); y(i)+d_*sin(pi/3-th(i)); y(i)-d_*cos(pi/3-th(i)); y(i)+d_*sin(th(i))];
-       plot(p_i.x,p_i.y,'r');
+        R = [ cos(th(i)) -sin(th(i)) ;
+              sin(th(i)) cos(th(i)) ];
+        p_i = [x(i),y(i)]'+R*v;
+        plot(p_i(1,:),p_i(2,:),'r');
     end

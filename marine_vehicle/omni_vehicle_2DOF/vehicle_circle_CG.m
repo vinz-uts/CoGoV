@@ -1,29 +1,13 @@
-%% Command Governor
-% Governor for robust constraints reference generation.
-% 
-% States:                   Inputs:             Constraints:
-% z = [x,y,dx,dy]'          g = [x*,y*]'        c = [z3,z4,u1,u2]'
-% 
-% Pre-controlled system model:
-% z(k+1) = Φ*z(k) + G*g(k)
-% y(k) = Hy*z(k)
-% c(k) = Hc*z(k) + L*g(k)
-% 
-% Constraints:
-% -Vx < dx < Vx         -T_max < Tx < T_max
-% -Vy < dy < Vy         -T_max < Ty < T_max
-%
-
 %% Clear workspace
 clear all;
 close all;
 
 %% Load Pre-controlled vehicle system
-addpath('../util');  addpath(genpath('../tbxmanager')); addpath('../CG');
+addpath('../../util');  addpath(genpath('../../tbxmanager')); addpath('../../CG');
 
 vehicle_model % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle.init_position(0,0); % set vehicle's initial position
+vehicle.init_position(5,0); % set vehicle's initial position
 
 %% Constraints
 % T*c ≤ b
@@ -58,19 +42,32 @@ vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 %% Command Governor
 vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 
+%% Discrete circle trajectory
+C = [0,0]; % circle center
+rho = 5; % circle radius - [m]
+Ns = 20; % trajectory discretization steps
+th = 0:(2*pi/Ns):2*pi;
+r = [C(1)+rho.*cos(th) ; C(2)+rho.*sin(th)]; % references
+delta = 0.1; % reference tollerance
+
 %% Simulation
-Tf = 3; % simulation time
+Tf = 25; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
-r = [2,3]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
+k = 1; % actual reference
 
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
-    g = vehicle.cg.compute_cmd(xa,r);
+    if norm(x(1:2)-r(:,k),2) <= delta && k+1 <= Ns
+        k = k+1;
+    end
+    g = vehicle.cg.compute_cmd(xa,r(:,k));
     vehicle.ctrl_sys.sim(g,Tc_cg);
 end
 
 %% Plot Simulation Result
 plot_simulation(vehicle.ctrl_sys);
+figure(5);
+plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:));

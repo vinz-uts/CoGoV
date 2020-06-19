@@ -56,8 +56,9 @@ N = ceil(Tf/Tc_cg); % simulation steps number
 
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
-    x(4) = cos(x(3))*x(4) - sin(x(3))*x(5);
-    x(5) = sin(x(3))*x(4) + cos(x(3))*x(5);
+    u = x(4);   v = x(5);
+    x(4) = cos(x(3))*u - sin(x(3))*v;
+    x(5) = sin(x(3))*u + cos(x(3))*v;
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
     g = vehicle.cg.compute_cmd(xa,r);

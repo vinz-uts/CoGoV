@@ -1,9 +1,9 @@
 %% Clear workspace
 clear all;
-%close all;
+close all;
 
 %% Load vehicles' model matrices 
-addpath(genpath('../util'));  addpath(genpath('../tbxmanager'));    addpath('../CG');
+addpath(genpath('../../util'));  addpath(genpath('../../tbxmanager'));    addpath('../../CG');
 vehicle_model
 
 %% Vehicles

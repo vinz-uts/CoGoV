@@ -7,7 +7,7 @@ classdef ControlledVehicle < handle
         ctrl_sys % ControlledSystem_LQI
         cg % command governor
 		g % last computed references
-        color % turn color
+        color % round color
     end
     
     
