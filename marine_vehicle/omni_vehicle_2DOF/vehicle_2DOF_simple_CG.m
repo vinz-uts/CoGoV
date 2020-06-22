@@ -19,9 +19,10 @@ clear all;
 close all;
 
 %% Load Pre-controlled vehicle system
-addpath('../../util');  addpath(genpath('../../tbxmanager')); addpath('../../CG');
+addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_model % WARN: Select the correct constraints matrix Hc, L.
+vehicle_2DOF_model % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle.init_position(0,0); % set vehicle's initial position
 

@@ -3,9 +3,10 @@ clear all;
 close all;
 
 %% Load Pre-controlled vehicle system
-addpath('../../util');  addpath(genpath('../../tbxmanager')); addpath('../../CG');
+addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_model % WARN: Select the correct constraints matrix Hc, L.
+vehicle_3DOF_model % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 %vehicle.init_position(0,0); % set vehicle's initial position
 
@@ -53,7 +54,7 @@ Tf = 10; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
 r = [2,3,pi/2]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
-epsilon = 0.01; % nearest precision
+epsilon = 0.01; % nearness precision
 
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state

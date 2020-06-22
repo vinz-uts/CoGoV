@@ -19,7 +19,7 @@ function plot_trajectory(x,y,th,N,d)
     
     v = d_.*[1 -1 -0.6 -1 1;0 -1 0 1 0];% base "triangle" vertices
     
-    figure();
+    %figure();
     plot(x,y);  hold on; % plot trajectory
     axis equal
     

@@ -1,5 +1,5 @@
 %% Configure vehicle swarm
-vehicle_cooperation
+vehicle_3DOF_cooperation
 
 %% Color the net
 colors = [0,1];
@@ -7,13 +7,14 @@ vehicle{1}.color = colors(1);
 vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
-%% Simulation Parallel CG
+%% Simulation Colored Round CG
 Tf = 5; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
-r{1} = [4,0.5]'; % position references
-r{2} = [3,1]'; % position references
-r{3} = [3,-1.5]'; % position references
+r{1} = [4,0.5,0]'; % position references
+r{2} = [3,1,0]'; % position references
+r{3} = [3,-1.5,0]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
+epsilon = 0.1; % nearness precision
 
 round = 1;
 for t=1:NT 
@@ -22,6 +23,9 @@ for t=1:NT
             x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
+            if norm([vehicle{i}.g(1)-x(1) vehicle{i}.g(2)-x(2)]) > epsilon
+                r{i}(3) = atan2(vehicle{i}.g(2)-x(2),vehicle{i}.g(1)-x(1));
+            end
             g_n = [];
             for j=1:N
                 if adj_matrix(i,j) == 1 % i,j is neighbour
@@ -48,11 +52,11 @@ for t=1:NT
 end
 
 
-%% Plot Vehicles trajectory and velocities
+%% Plot vehicles trajectory and velocities
 for i=1:N
     % Trajectory
     figure(1);  hold on;
-    plot(vehicle{i}.ctrl_sys.sys.x(1,:),vehicle{i}.ctrl_sys.sys.x(2,:),'.');
+    plot_trajectory(vehicle{i}.ctrl_sys.sys.x(1,:),vehicle{i}.ctrl_sys.sys.x(2,:),vehicle{i}.ctrl_sys.sys.x(3,:));
     plot(vehicle{i}.ctrl_sys.sys.x(1,end),vehicle{i}.ctrl_sys.sys.x(2,end),'o');
     % Position
     figure(2); hold on;

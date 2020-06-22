@@ -2,46 +2,40 @@
 clear all;
 close all;
 
-%% Load vehicles' model matrices 
-addpath(genpath('../../util'));  addpath(genpath('../../tbxmanager'));    addpath('../../CG');
-vehicle_model
+%% Load Pre-controlled vehicle system
+addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-%% Vehicles
-N = 3; % number of vehicles
-%for i=1:N
-	% Vehicle 1
-	vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-    vehicle{1}.init_position(1,0);
-	% Vehicle 2
-	vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-    vehicle{2}.init_position(0,1);
-	% Vehicle 3
-	vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-    vehicle{3}.init_position(0,-1);
-%end
+vehicle_3DOF_model % WARN: Select the correct constraints matrix Hc, L.
 
-%% Net configuration
-%   1
-%  / \
-% 2   3
-adj_matrix = [-1  1  1;
-			   1 -1  0;
-			   1  0 -1];
+N = 2; % number of vehicles
 
+vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
+vehicle{1}.init_position(-10,0,0); % set vehicle's initial position
+vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
+vehicle{2}.init_position(10,0,pi); % set vehicle's initial position
+
+adj_matrix = [-1  1 ;
+			   1 -1 ];
+           
 %% Vehicles constraints
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 1.5; % maximum distance between vehicles - [m]
-d_min = 1; % minimum distance between vehicles - [m]
+d_max = 20; % maximum distance between vehicles - [m]
+d_min = 0.5; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
 Vx = 2; % max abs of speed along x - [m/s]
 Vy = 2; % max abs of speed along y - [m/s]
+Vt = pi; % max abs of speed around z - [rad/s]
 T_max = 100; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = eye(2); % vehicle's references weight matrix
+% Vehicle's references weight matrix
+Psi = [ 1  0  0 ;
+        0  1  0 ;
+        0  0  10 ];
 k0 = 10; % prediction horizon
 
 %% Augmented System and Command Governor construction
@@ -118,16 +112,20 @@ for i=1:N
     
     % Speed and thrust constraints
     % T_*c_ ≤ gi_       single vehicle constraints
-    %      x  y Vx Vy Tx Ty
-    T_ = [ 0  0  1  0  0  0 ;
-           0  0 -1  0  0  0 ;
-           0  0  0  1  0  0 ;
-           0  0  0 -1  0  0 ;
-           0  0  0  0  1  0 ;
-           0  0  0  0 -1  0 ;
-           0  0  0  0  0  1 ;
-           0  0  0  0  0 -1 ];
-    gi_ = [Vx,Vx,Vy,Vy,T_max,T_max,T_max,T_max]';
+    %      x  y  ϑ Vx Vy Vϑ Tx Ty Tϑ
+    T_ = [ 0  0  0  1  0  0  0  0  0 ;
+           0  0  0 -1  0  0  0  0  0 ;
+           0  0  0  0  1  0  0  0  0 ;
+           0  0  0  0 -1  0  0  0  0 ;
+           0  0  0  0  0  1  0  0  0 ;
+           0  0  0  0  0 -1  0  0  0 ;
+           0  0  0  0  0  0  1  0  0 ;
+           0  0  0  0  0  0 -1  0  0 ;
+           0  0  0  0  0  0  0  1  0 ;
+           0  0  0  0  0  0  0 -1  0 ;
+           0  0  0  0  0  0  0  0  1 ;
+           0  0  0  0  0  0  0  0 -1 ];
+    gi_ = [Vx,Vx,Vy,Vy,Vt,Vt,T_max,T_max,T_max,T_max,T_max,T_max]';
     
     Ta = T_;    ga = gi_;
     for j=1:k
@@ -138,3 +136,50 @@ for i=1:N
 
     vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
 end
+
+%% Simulation Sequential CG
+Tf = 5; % simulation time
+Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
+r{1} = [15,0,0]'; % position references
+r{2} = [-15,0,pi]'; % position references
+NT = ceil(Tf/Tc_cg); % simulation steps number
+epsilon = 0.1; % nearness precision
+
+i = 0;
+for t=1:NT
+    i = rem(i,N)+1;
+    x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
+    xc = vehicle{i}.ctrl_sys.xci; % controller current state
+    xa = [x;xc];
+    if norm([vehicle{i}.g(1)-x(1) vehicle{i}.g(2)-x(2)]) > epsilon
+        r{i}(3) = atan2(vehicle{i}.g(2)-x(2),vehicle{i}.g(1)-x(1));
+    end
+    g_n = [];
+    for j=1:N
+        if adj_matrix(i,j) == 1 % i,j is neighbour
+            g_n = [g_n;vehicle{j}.g];
+            x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
+            xc = vehicle{j}.ctrl_sys.xci; % controller current state
+            xa = [xa;x;xc];
+        end
+    end
+    g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
+    if ~isempty(g)
+        vehicle{i}.g = g;
+    else
+       disp('WARN: old references');
+       t,i
+    end
+    
+    for j=1:N
+        vehicle{j}.ctrl_sys.sim(vehicle{j}.g,Tc_cg);
+    end
+end
+
+%% Plot vehicles trajectory
+for i=1:N
+    figure(1);  hold on;
+    plot_trajectory(vehicle{i}.ctrl_sys.sys.x(1,:),vehicle{i}.ctrl_sys.sys.x(2,:),vehicle{i}.ctrl_sys.sys.x(3,:));
+    plot(vehicle{i}.ctrl_sys.sys.x(1,end),vehicle{i}.ctrl_sys.sys.x(2,end),'o');
+end
+

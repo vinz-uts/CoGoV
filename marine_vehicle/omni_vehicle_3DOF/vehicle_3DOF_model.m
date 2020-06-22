@@ -99,15 +99,15 @@ Phi = P.A;     G = P.B;    Hy = P.C;
 %Hc = [ eye(3)  zeros(3,6) ];
 %L = zeros(3,3);
 % Speed and input constraints
-Hc = [ zeros(3,3) eye(3)  zeros(3,3) ;
-              -F              f      ];
-L = zeros(6,3);
+%Hc = [ zeros(3,3) eye(3)  zeros(3,3) ;
+%              -F              f      ];
+%L = zeros(6,3);
 % Position and input constraints
 %Hc = [ eye(3)        zeros(3,6)      ;
 %              -F              f      ];
 %L = zeros(6,3);
 % Position, speed and input constraints
-%Hc = [ eye(6)  zeros(6,3) ;
-%        -F         f      ];
-%L = zeros(9,3);
+Hc = [ eye(6)  zeros(6,3) ;
+        -F         f      ];
+L = zeros(9,3);
 

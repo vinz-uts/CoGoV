@@ -2,9 +2,9 @@
 close all;
 
 %% Configure vehicle swarm
-vehicle_cooperation
+vehicle_2DOF_cooperation
 
-%% Simulation Parallel CG
+%% Simulation Sequential CG
 Tf = 5; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 r{1} = [4,0.5]'; % position references
@@ -12,38 +12,31 @@ r{2} = [3,1]'; % position references
 r{3} = [3,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-old_g = cell(N,1);
-for i=1:N
-    old_g{i} = vehicle{i}.g;
-end
-
-for t=1:NT 
-    for i=1:N
-        x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
-        xc = vehicle{i}.ctrl_sys.xci; % controller current state
-        xa = [x;xc];
-        g_n = [];
-        for j=1:N
-            if adj_matrix(i,j) == 1 % i,j is neighbour
-                g_n = [g_n;old_g{j}]; %[g_n;vehicle{j}.g];
-                %g_n = [g_n;vehicle{j}.g];
-                x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
-                xc = vehicle{j}.ctrl_sys.xci; % controller current state
-                xa = [xa;x;xc];
-            end
+i = 0;
+for t=1:NT
+    i = rem(i,N)+1;
+    x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
+    xc = vehicle{i}.ctrl_sys.xci; % controller current state
+    xa = [x;xc];
+    g_n = [];
+    for j=1:N
+        if adj_matrix(i,j) == 1 % i,j is neighbour
+            g_n = [g_n;vehicle{j}.g];
+            x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
+            xc = vehicle{j}.ctrl_sys.xci; % controller current state
+            xa = [xa;x;xc];
         end
-        
-        g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
-        if ~isempty(g)
-            vehicle{i}.g = g;
-        else
-            disp('WARN: old references');
-            t,i
-        end
-        old_g{i} = vehicle{i}.g;
     end
-    for i=1:N
-        vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
+    g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
+    if ~isempty(g)
+        vehicle{i}.g = g;
+    else
+       disp('WARN: old references');
+       t,i
+    end
+    
+    for j=1:N
+        vehicle{j}.ctrl_sys.sim(vehicle{j}.g,Tc_cg);
     end
 end
 
