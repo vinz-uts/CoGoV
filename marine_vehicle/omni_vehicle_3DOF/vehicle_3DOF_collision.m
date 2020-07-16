@@ -11,9 +11,9 @@ vehicle_3DOF_model % WARN: Select the correct constraints matrix Hc, L.
 N = 2; % number of vehicles
 
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(-10,0,0); % set vehicle's initial position
+vehicle{1}.init_position(0,1,0); % set vehicle's initial position
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(10,0,pi); % set vehicle's initial position
+vehicle{2}.init_position(0,-1,pi); % set vehicle's initial position
 
 adj_matrix = [-1  1 ;
 			   1 -1 ];
@@ -23,7 +23,7 @@ adj_matrix = [-1  1 ;
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 20; % maximum distance between vehicles - [m]
-d_min = 0.5; % minimum distance between vehicles - [m]
+d_min = 0; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
 Vx = 2; % max abs of speed along x - [m/s]
@@ -134,14 +134,14 @@ for i=1:N
     end
     T = [Ta;T];     gi = [ga;gi];
 
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,Ta,ga,U,hi,Psi,k0);
 end
 
 %% Simulation Sequential CG
-Tf = 5; % simulation time
+Tf = 3; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
-r{1} = [15,0,0]'; % position references
-r{2} = [-15,0,pi]'; % position references
+r{1} = [1,0,0]'; % position references
+r{2} = [-1,0,pi]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
 epsilon = 0.1; % nearness precision
 
@@ -149,6 +149,8 @@ i = 0;
 for t=1:NT
     i = rem(i,N)+1;
     x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
+    % Add 10% noise to the state.
+    x = x + randn(length(x),1).*(0.1*x);
     xc = vehicle{i}.ctrl_sys.xci; % controller current state
     xa = [x;xc];
     if norm([vehicle{i}.g(1)-x(1) vehicle{i}.g(2)-x(2)]) > epsilon
@@ -165,7 +167,18 @@ for t=1:NT
     end
     g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
     if ~isempty(g)
-        vehicle{i}.g = g;
+        nn = false;
+        for j=1:length(g)
+            if isnan(g(j))
+                nn = true;
+            end
+        end
+        if nn
+            disp('NaN in g');
+        else
+            vehicle{i}.g = g;
+        end
+        
     else
        disp('WARN: old references');
        t,i

@@ -8,7 +8,7 @@ addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
 vehicle_3DOF_model % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-%vehicle.init_position(0,0); % set vehicle's initial position
+vehicle.init_position(0,0,-pi); % set vehicle's initial position
 
 %% Constraints
 % T*c ≤ b
@@ -52,7 +52,7 @@ vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 %% Simulation
 Tf = 10; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
-r = [2,3,pi/2]'; % position references
+r = [-2,-3,-pi/2]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
 epsilon = 0.01; % nearness precision
 
@@ -69,4 +69,5 @@ end
 
 %% Plot Simulation Result
 plot_simulation(vehicle.ctrl_sys);
+figure();
 plot_trajectory(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),vehicle.ctrl_sys.sys.x(3,:));

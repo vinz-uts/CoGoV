@@ -23,6 +23,7 @@ for t=1:NT
             x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
+            % Modify: modify the angular reference after the cg
             if norm([vehicle{i}.g(1)-x(1) vehicle{i}.g(2)-x(2)]) > epsilon
                 r{i}(3) = atan2(vehicle{i}.g(2)-x(2),vehicle{i}.g(1)-x(1));
             end
