@@ -23,10 +23,12 @@ classdef DistribuitedCommandGovernor < CommandGovernor
         end
         
         
-        function [g, ris, hype] = compute_cmd(obj,x,r,g_n, cloud_points)
+        function [g, ris, hype] = compute_cmd(obj,x,r,g_n, cloud_points, hyp)
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % global conditions x and g_n reference for the other systems.
+            
+            
             g = sdpvar(length(r),1);
             w = [g;g_n];
             b = binvar(size(obj.U,1)*obj.k0,1);
@@ -34,16 +36,25 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             mu = 10000;
             hype = [];
             
+            positions = [x(1:6:end), x(2:6:end)]';
+            
             %%% Steady State Constraints 
             cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
            
-            if(nargin > 4)  % Obstacle avoidance
+            if(nargin > 4 && nargin < 6)  % Obstacle avoidance
                 slack_var = 0;
 %                 cnstr = [cnstr, -0.01 <= slack_var <= 0.01];
-                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.3, r, cloud_points);
+                [ay, by] = obj.find_hyperplane_cg([positions], 0.3, r, cloud_points);
                 hype = hyperplane(ay, by);
+                cnstr = [cnstr ay'*w(1:2)<=(by-0.1)];        
+            elseif(nargin == 6)
+                slack_var = 0;
+                [ay,by] = double(hyp) ;
+%                 by = hyp.shift ;
                 cnstr = [cnstr ay'*w(1:2)<=(by-0.1)];
             end
+            
+            
             
             for i=1:(size(obj.U,1)/4)
                 cnstr = [cnstr obj.U((i-1)*4+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+1)-mu*d((i-1)*4+1)];
@@ -110,8 +121,12 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 V = [V,(a'*cloud_points(:, i))>=(b+d_min)];
             end
             
-            % and the veichle to the other side of the hyperplane
-            V = [V,(a'*y<=b-0.009)];
+%             % and the veichle to the other side of the hyperplane
+%             V = [V,(a'*y<=b-0.009)];
+%             
+            for i = 1:length(y(1,:))
+                V = [V,(a'*y(:, i))<=b-0.009];
+            end
             
             % Restrinction on the number of possible hyperplane
             V = [V,(norm(a,2)<=1)];
@@ -133,7 +148,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     g(2) >= minY && g(2) <= maxY && y(2) + delta>= minY && y(2) - delta <= maxY) )
                 
                 V = [V,(a'*g <=b+rr)];
-                ob_fun = 0.000006*norm(rr)-norm(a'*y-b+0.009,inf); % 1*norm(a'*cloud_points(:, i) - b)
+                ob_fun = 0.000006*norm(rr)-norm(a'*y(:,1)-b+0.009,inf); % 1*norm(a'*cloud_points(:, i) - b)
                 
             else
                 ob_fun = norm(a'*cloud_points(:, i) - b);

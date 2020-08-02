@@ -81,8 +81,8 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             [obj.Rk, obj.bk] = obj.compute_matrix();
         end
         
-        function [rs, rns] = compute_virtual_cmd(obj,r,rn1,g_n,dmax,dmin) 
-            %%% rs is the virtual reference for vehicle i 
+        function [rs, rns] = compute_virtual_cmd(obj,r,rn1,g_n,dmax,dmin)
+            %%% rs is the virtual reference for vehicle i
             %%% rns is the virtuaal reference for vehicle N+1
             %%% r is equal to previous reference g(t-1)
             w1 = sdpvar(length(r),1);
@@ -95,7 +95,7 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
             
             cnstr = [cnstr obj.T(1:8,1:6)*((obj.Hc_/(eye(size(obj.Phi_,1))-obj.Phi_)*obj.G_+obj.L_)*wn1) <= obj.gi(1:8)];
- 
+            
             for i=1:(size(obj.U,1)/4)
                 cnstr = [cnstr obj.U((i-1)*4+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+1)-mu*d((i-1)*4+1)];
                 cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+2)-mu*d((i-1)*4+2)];
@@ -122,9 +122,9 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
                 cnstr = [cnstr sum( dnew((1:4)) ) <= 3];
             end
             
-             % Objective function evaluating both references 
+            % Objective function evaluating both references
             obj_fun = 0.8*(r-w1)'*obj.Psi*(r-w1) + 0.2*(rn1-wn1)'*obj.Psi*(rn1-wn1) ;
-             % Solver options
+            % Solver options
             assign(w1, r); % initial guessing (possible optimization speed up)
             assign(wn1, rn1); % initial guessing (possible optimization speed up)
             
@@ -143,8 +143,6 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             clear('yalmip');
         end
         
-        
-         
         function [rs] = compute_virtual_cmd_fixed(obj,r,rn1,g_n,dmax,dmin) 
             %%% rs is the virtual reference for vehicle i 
             %%% rns is the virtuaal reference for vehicle N+1
@@ -205,6 +203,72 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             
             clear('yalmip');
         end
+      
+        
+        function [rs] = compute_all_virtual_cmds(obj,r_n,dmax,dmin)
+            %%% r_n are all the references of all vehicles
+            %%% rns is the virtuaal reference for vehicle N+1
+            %%% r is equal to previous reference g(t-1)
+            w = sdpvar(length(r_n),1);
+            N = length(r_n)/2;  
+           
+            mu = 10000;
+            
+            cnstr = []; 
+            
+            %%% Local steady state constraints   
+            for i=1:2:length(r_n)-1
+                cnstr = [cnstr obj.T(1:8,1:6)*((obj.Hc_/(eye(size(obj.Phi_,1))-obj.Phi_)*obj.G_+obj.L_)*w(i:i+1)) <= obj.gi(1:8)];
+            end
+     
+            %%% We need to satisfy steady state constraints with all vehicle
+            % and all vehicles among each other
+            
+            ob_fun = 0;
+            aa = 0.8;
+            for i=1:2:length(r_n)-2
+                if(i==1)
+                     aa = 0.8;
+                else
+                    aa = 0.05;
+                end
+                ob_fun = ob_fun + aa*(r_n(i:i+1)-w(i:i+1))'*obj.Psi*(r_n(i:i+1)-w(i:i+1));
+                
+                for j=i+2:2:length(r_n)-1
+                    if(not(isempty(dmax)))
+                        check_gi = dmax*ones(size(obj.datacheck.U(:,1),1),1);
+                        cnstr = obj.datacheck.U*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*[w(i:i+1);w(j:j+1)]) <= check_gi;
+                    end
+                    
+                    if(not(isempty(dmin)))
+                        check_hi = dmin*ones(size(obj.datacheck.U(:,1),1),1);
+                        dnew = binvar(size(obj.datacheck.U,1),1);
+                        cnstr = [cnstr obj.datacheck.U(1,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*[w(i:i+1);w(j:j+1)]) >= check_hi(1)-mu*dnew(1)];
+                        cnstr = [cnstr obj.datacheck.U(2,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*[w(i:i+1);w(j:j+1)]) >= check_hi(2)-mu*dnew(2)];
+                        cnstr = [cnstr obj.datacheck.U(3,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*[w(i:i+1);w(j:j+1)]) >= check_hi(3)-mu*dnew(3)];
+                        cnstr = [cnstr obj.datacheck.U(4,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*[w(i:i+1);w(j:j+1)]) >= check_hi(4)-mu*dnew(4)];
+                        cnstr = [cnstr sum( dnew((1:4)) ) <= 3];
+                    end
+                    
+                end
+            end
+            
+            
+            % Objective function evaluating both references
+            obj_fun = ob_fun +aa*(r_n(end-1:end)-w(end-1:end))'*obj.Psi*(r_n(end-1:end)-w(end-1:end)) ;
+            
+            options = sdpsettings('verbose',0,'solver',obj.solver_name,'usex0',1,'cachesolvers',1);
+            
+            ris = optimize(cnstr,obj_fun,options);
+            rs = double(w);
+
+            if(ris.problem ~= 0)
+                fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
+                rs = [];
+            end
+            
+            clear('yalmip');
+        end
         
         function add_swarm_cnstr(obj,id,varargin)
             % add_swarm_cnstr - add 2 vehicles constraints
@@ -259,7 +323,6 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             
             obj.neigh = [obj.neigh id]; % add the 'id'-th vehicle to the neighbour list
         end
-        
         
         function remove_swarm_cnstr(obj,id)
             % remove_swarm_cnstr - remove all constraints with vehicle 'id'

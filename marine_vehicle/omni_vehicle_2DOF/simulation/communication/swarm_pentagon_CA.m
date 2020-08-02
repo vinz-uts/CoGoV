@@ -21,11 +21,11 @@ for i=1:N
 end
 
 % 
-r{1} = r_{2};
-r{2} = r_{3};
-r{3} = r_{4};
-r{4} = r_{5};
-r{5} = r_{1};
+r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2) + [40;0];
+r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2) + [40;0];
+r{3} = vehicle{3}.ctrl_sys.sys.xi(1:2) + [40;0];
+r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2) + [40;0];
+r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2) + [40;0];
 
 r_{1} = r{1};
 r_{2} = r{2};
@@ -33,15 +33,16 @@ r_{3} = r{3};
 r_{4} = r{4};
 r_{5} = r{5};
 
-r{4} = r{1};
-r{1} = r_{2} - [0;5]; 
+% r{4} = r{1};
+% r{1} = r_{2} - [0;5]; 
+% r{5} = r{4} + [5;-1];
 % 
-% 
-r_{1} = r{1};
-r_{2} = r{2};
-r_{3} = r{3};
-r_{4} = r{4};
-r_{5} = r{5};
+% % 
+% r_{1} = r{1};
+% r_{2} = r{2};
+% r_{3} = r{3};
+% r_{4} = r{4};
+% r_{5} = r{5};
 
 % vehicle{1}.planner = LinePlanner(r{1}, 'radius', 20);
 % vehicle{2}.planner = LinePlanner(r{2}, 'radius', 20);
@@ -85,7 +86,7 @@ T_max = 100; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 1000*eye(2); % vehicle's references weight matrix
-k0 = 40; % prediction horizon
+k0 = 30; % prediction horizon
 
 %%% Vector for distance for plotting purposes
 dist = [];
@@ -195,10 +196,10 @@ for t=1:NT
             end
             
 %             r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
-            if(i==3)
+            if(i==1)
                 [g,s,hypeblack] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points);
             else
-                [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points);
+                [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points,hypeblack);
             end
             
             
@@ -218,13 +219,13 @@ for t=1:NT
     
     figure(1);
     
-    axis([0 40 -10 30]);
+    axis([0 50 -25 25]);
     for k=1:N
         % Trajectory
         %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
-        axis([0 40 -10 30]);
+        axis([0 50 -25 25]);
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
@@ -232,7 +233,7 @@ for t=1:NT
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
         plot(pentagon);
         %%%%%%%%%%%%
-        if(k==3 && not(isempty(hypeblack)) && false)
+        if(k==1 && not(isempty(hypeblack)) )
             plot(hypeblack);
         end
         

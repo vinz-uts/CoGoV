@@ -24,16 +24,16 @@ ySamples = [0, 1, 0, -1];
 
 
 
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4);
+vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4 , 'tolerance', 0.7);
 vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]);
 
 
 
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4);
+vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4 , 'tolerance', 0.7);
 vehicle{3}.planner.transform(3, [vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]);
 
 
-vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false);
+vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false, 'tolerance', 0.1);
 vehicle{5}.planner.transform(6, [vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]);
 
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
@@ -71,7 +71,7 @@ end
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 20;  % maximum distance between vehicles - [m]
+d_max = 12;  % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
@@ -249,7 +249,7 @@ for t=1:NT
         plot(vehicle{5}.planner);
         
     end
-    plot(pl);
+%     plot(pl);
     hold off;
     dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)),inf)];
     dist2 = [dist2, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)),inf)];

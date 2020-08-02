@@ -125,6 +125,8 @@ classdef Polar_trajectory_planner < Planner
             theta_p = obj.xy2polar(p(1), p(2));
             theta_r = obj.xy2polar(obj.r_old(1), obj.r_old(2));
             res = norm(theta_p - theta_r) <= obj.tol;
+            
+%             res = norm(p(1)-obj.r_old(1)) <= obj.tol || norm(p(2)-obj.r_old(2)) <= obj.tol ;
         end
         
         function [r, theta] = compute_standard_reference(obj, p)
