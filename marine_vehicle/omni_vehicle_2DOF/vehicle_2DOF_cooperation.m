@@ -35,7 +35,7 @@ adj_matrix = [-1  1  1;
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 2; % maximum distance between vehicles - [m]
-d_min = 1; % minimum distance between vehicles - [m]
+d_min = 0.5; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
 Vx = 2; % max abs of speed along x - [m/s]
@@ -110,10 +110,10 @@ for i=1:N
             % U*c ≤ hi (row-by-row OR-ed constrains)
             if ~isempty(U)
                 U = [U;cnstr];
-                hi = [hi;[-d_min,-d_min,-d_min,-d_min]'];
+                hi = [hi;[d_min,d_min,d_min,d_min]'];
             else
                 U = cnstr;
-                hi = [-d_min,-d_min,-d_min,-d_min]';
+                hi = [d_min,d_min,d_min,d_min]';
             end    
         end
     end

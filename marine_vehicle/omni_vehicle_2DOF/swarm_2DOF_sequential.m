@@ -8,8 +8,8 @@ vehicle_2DOF_cooperation
 Tf = 5; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 r{1} = [4,0.5]'; % position references
-r{2} = [3,1]'; % position references
-r{3} = [3,-1.5]'; % position references
+r{2} = [5,1]'; % position references
+r{3} = [5,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
 i = 0;

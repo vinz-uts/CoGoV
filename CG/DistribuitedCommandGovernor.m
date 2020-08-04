@@ -27,16 +27,27 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             try
                 g = sdpvar(length(r),1);
                 w = [g;g_n];
+                b = binvar(size(obj.U,1)*(obj.k0+1),1);
+                d = binvar(size(obj.U,1),1);
+                mu = 1000;
                 cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
-                for i=1:(size(obj.U,1)/2)
-                    cnstr = [cnstr norm(obj.U((i-1)*2+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w),Inf)>=-obj.hi((i-1)*2+1)];
+                for i=1:(size(obj.U,1)/4)
+                    cnstr = [cnstr obj.U((i-1)*4+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi-mu*d((i-1)*4+1)];
+                    cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi-mu*d((i-1)*4+2)];
+                    cnstr = [cnstr obj.U((i-1)*4+3,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi-mu*d((i-1)*4+3)];
+                    cnstr = [cnstr obj.U((i-1)*4+4,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi-mu*d((i-1)*4+4)];
+                    cnstr = [cnstr sum(d(((i-1)*4+1):((i-1)*4+4))) <= 3];
                 end
                 xk = x;
                 for k = 1:obj.k0
                     xk = obj.Phi*xk+obj.G*w;
                     cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
-                    for i=1:(size(obj.U,1)/2)
-                        cnstr = [cnstr norm(obj.U((i-1)*2+1,:)*(obj.Hc*xk+obj.L*w),Inf)>=-obj.hi((i-1)*2+1)];
+                    for i=1:(size(obj.U,1)/4)
+                        cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+1)];
+                        cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+2)];
+                        cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+3)];
+                        cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+4)];
+                        cnstr = [cnstr sum(b(((k-1)*4+(i-1)*4+1):((k-1)*4+(i-1)*4+4))) <= 3];
                     end
                 end
                 
