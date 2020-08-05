@@ -35,12 +35,12 @@ adj_matrix = [-1  1  0;
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 200; % maximum distance between vehicles - [m]
-d_min = 1; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+d_min = 0.5; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
 % Vehicles input/speed constraints
 Max_x = 2; % max abs of speed along x - [m/s]
 Max_y = 2; % max abs of speed along y - [m/s]
-T_max = 100; % max abs of motor thrust - [N]
+T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = eye(2); % vehicle's references weight matrix

@@ -32,7 +32,7 @@ classdef BorderPlanner_2
         %             (optional)
         % output: 
         % obj       - BorderPlanner instance
-        function obj = BorderPlanner(direction, m, limits, tol)
+        function obj = BorderPlanner_2(direction, m, limits, tol)
             
             obj.direction = direction;
             obj.p_old = [];
@@ -106,27 +106,27 @@ classdef BorderPlanner_2
             if((obj.direction > 0 && obj.m < 0) || ((obj.direction < 0 && obj.m > 0)))
                 % lower right corner
                 if((obj.direction > 0 && obj.m < 0))
-                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]';
+                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]' -0.1;
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]';
+                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]'-0.1;
                     end
                 else % lower left corner
-                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]';
+                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]'-0.1;
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]';
+                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]'-0.1;
                     end
                 end
             else
                 % upper left corner
                 if((obj.direction < 0 && obj.m < 0))
-                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]';
+                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]'-0.1;
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]';
+                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]'-0.1;
                     end
                 else % upper right corner
-                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]';
+                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]'-0.1;
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]';
+                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]'-0.1;
                     end
                 end
             end

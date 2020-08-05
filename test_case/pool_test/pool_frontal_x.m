@@ -55,11 +55,11 @@ for t=1:NT
 %             [r, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
             
             if(i==1)
-                r=[1,1.3]';
+                r=[1,1.5]';
             end
             
             if(i==2)
-                r=[1.3,1]';
+                r=[1.5,1]';
             end
             
             if(i==3)
@@ -73,23 +73,16 @@ for t=1:NT
                 plot(r(1), r(2), 'bx');
                 if(not(isempty(g)))
                     if(norm(g-zerr)==0)
-                        
                         disp('WARN: Zero reference');
                     end
                     plot(g(1), g(2), 'rx');
                 end
             end
+            
             if ~isempty(g)
                 vehicle{i}.g = g;
-                if(i==1)
-                    vehicle{i}.g 
-                    % perché va a zero?????? 
-                end
             else
                 disp('WARN: old references');
-                if(i==1)
-                    vehicle{i}.g 
-                end
                 t,i
             end
         end

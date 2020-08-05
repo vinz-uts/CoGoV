@@ -16,7 +16,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             % Create an instance of a Distribuited Command Governor.
             obj = obj@CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0);
             obj.U = U;
-            obj.hi = hi;
+            obj.hi = -hi;
         end
         
         
@@ -54,11 +54,21 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 
                 % Objective function
                 obj_fun = (r-g)'*obj.Psi*(r-g);
+                
                 % Solver options
-                options = sdpsettings('verbose',0,'solver','gurobi');
+                assign(g,[100,100]');
+                
+                options = sdpsettings('verbose',0,'solver','gurobi','usex0',1);
 
-                solvesdp(cnstr,obj_fun,options);
+                s = solvesdp(cnstr,obj_fun,options);
                 g = double(g);
+                
+                if(s.problem ~= 0)
+                    fprintf("WARNING! Problem %d visit \n https://www.gurobi.com/documentation/9.0/refman/optimization_status_codes.html \n ",s.problem);
+                    g = [];      
+                end
+                
+                      
             catch Exc
                 disp('WARN: infeasible');
                 g = [];

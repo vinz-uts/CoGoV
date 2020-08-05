@@ -69,6 +69,7 @@ for t=1:NT
             
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
+            %%%%%%%% to check incorrect zero reference computed by CG
             if(i==1)
                 plot(r(1), r(2), 'bx');
                 if(not(isempty(g)))
@@ -79,17 +80,12 @@ for t=1:NT
                     plot(g(1), g(2), 'rx');
                 end
             end
+            
+            
             if ~isempty(g)
                 vehicle{i}.g = g;
-                if(i==1)
-                    vehicle{i}.g 
-                    % perché va a zero?????? 
-                end
             else
                 disp('WARN: old references');
-                if(i==1)
-                    vehicle{i}.g 
-                end
                 t,i
             end
         end
