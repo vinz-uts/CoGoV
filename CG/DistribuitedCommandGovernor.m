@@ -37,6 +37,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     cnstr = [cnstr obj.U((i-1)*4+3,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi-mu*d((i-1)*4+3)];
                     cnstr = [cnstr obj.U((i-1)*4+4,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi-mu*d((i-1)*4+4)];
                     cnstr = [cnstr sum(d(((i-1)*4+1):((i-1)*4+4))) <= 3];
+                    %cnstr = [cnstr 3.5 <= 3];
                 end
                 xk = x;
                 for k = 1:obj.k0
@@ -54,7 +55,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 % Objective function
                 obj_fun = (r-g)'*obj.Psi*(r-g);
                 % Solver options
-                options = sdpsettings('verbose',0,'solver','bmibnb');
+                options = sdpsettings('verbose',0,'solver','gurobi');
 
                 solvesdp(cnstr,obj_fun,options);
                 g = double(g);

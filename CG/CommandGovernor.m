@@ -47,7 +47,7 @@ classdef CommandGovernor
                 % Objective function
                 obj_fun = (r-w)'*obj.Psi*(r-w);
                 % Solver options
-                options = sdpsettings('verbose',0,'solver','sedumi');
+                options = sdpsettings('verbose',0,'solver','gurobi');
 
                 solvesdp(cnstr,obj_fun,options);
                 g = double(w);
