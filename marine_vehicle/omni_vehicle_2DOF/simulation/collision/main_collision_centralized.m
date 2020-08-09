@@ -173,15 +173,15 @@ yalmiptime = [];
 
 %%%%%%%%%% Crossed Collision References
 
-% reference1= [1,1.5]';
-% reference2= [1.5,1]';
+reference1= [1,1.5]';
+reference2= [1.5,1]';
 
 %%%%%%%%%% Frontal Collision References
 
 % Uncomment to test
-% 
-reference1= vehicle{2}.ctrl_sys.sys.xi(1:2);
-reference2= vehicle{1}.ctrl_sys.sys.xi(1:2);
+% % 
+% reference1= vehicle{2}.ctrl_sys.sys.xi(1:2);
+% reference2= vehicle{1}.ctrl_sys.sys.xi(1:2);
 
 
 nr = size(reference1,1); % size of single vehicle reference
@@ -203,7 +203,7 @@ for t=1:NT
         end
         
     end
-    g = cg.compute_cmd(xa,r_);
+    [g,s] = cg.compute_cmd(xa,r_);
     %%%%%%%% to check incorrect zero reference computed by CG
     if(i==1)
         plot(r{1}(1), r{1}(2), 'bo');
@@ -218,6 +218,8 @@ for t=1:NT
         end
     end
     if ~isempty(g)
+        cputime= [cputime,s.solvertime];
+        yalmiptime=[yalmiptime,s.yalmiptime];
         for i=1:N
             vehicle{i}.g = g(((i-1)*nr)+1:((i-1)*nr)+nr);
         end

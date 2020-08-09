@@ -43,8 +43,8 @@ Max_y = 2; % max position value along y - [m]
 T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = 0.01*eye(2); % vehicle's references weight matrix
-k0 = 30; % prediction horizon
+Psi = 0.01*eye(N); % vehicle's references weight matrix
+k0 = 10; % prediction horizon
 
 %% Augmented System and Command Governor construction
 for i=1:N
