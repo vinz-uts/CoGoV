@@ -20,7 +20,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
         end
         
         
-        function g = compute_cmd(obj,x,r,g_n)
+        function [g,s] = compute_cmd(obj,x,r,g_n)
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % global conditions x and g_n reference for the other systems.

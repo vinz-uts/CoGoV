@@ -15,6 +15,9 @@ r{2} = [3,1]'; % position references
 r{3} = [3,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
+cputime =[];
+yalmiptime = [];
+
 round = 1;
 for t=1:NT 
     for i=1:N
@@ -35,6 +38,8 @@ for t=1:NT
             g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
             if ~isempty(g)
                 vehicle{i}.g = g;
+                cputime= [cputime,s.solvertime];
+                yalmiptime=[yalmiptime,s.yalmiptime];
             else
                 disp('WARN: old references');
                 t,i
