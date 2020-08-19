@@ -110,10 +110,10 @@ for i=1:N
             % U*c ≤ hi (row-by-row OR-ed constrains)
             if ~isempty(U)
                 U = [U;cnstr];
-                hi = [hi;[-d_min,-d_min,-d_min,-d_min]'];
+                hi = [hi;[d_min,d_min,d_min,d_min]'];
             else
                 U = cnstr;
-                hi = [-d_min,-d_min,-d_min,-d_min]';
+                hi = [d_min,d_min,d_min,d_min]';
             end    
         end
     end

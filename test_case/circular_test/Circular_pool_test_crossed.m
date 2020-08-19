@@ -10,7 +10,6 @@ center3 = [-0.5,0];
 
 pl(1) = CircularPlanner(center, 1, 0.4, 1);
 pl(2) =  CircularPlanner(center2, 1, 0.3, -1);
-
 pl(3) =  CircularPlanner(center3, 1, 0.4, 1);
 
 % Color the net

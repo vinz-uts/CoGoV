@@ -115,11 +115,11 @@ for t=1:NT
     end
     dist=[dist, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
  end
-dati = struct('x_vehicle1',vehicle{1}.ctrl_sys.sys.x(1,:),'y_vehicle1',vehicle{1}.ctrl_sys.sys.x(2,:),...
-    'x_vehicle2',vehicle{2}.ctrl_sys.sys.x(1,:),'y_vehicle2',vehicle{2}.ctrl_sys.sys.x(2,:),...
-    'x_vehicle3',vehicle{3}.ctrl_sys.sys.x(1,:),'y_vehicle3',vehicle{3}.ctrl_sys.sys.x(2,:),'distance', dist);
- 
-save('vehicle_circular23', 'dati');
+% dati = struct('x_vehicle1',vehicle{1}.ctrl_sys.sys.x(1,:),'y_vehicle1',vehicle{1}.ctrl_sys.sys.x(2,:),...
+%     'x_vehicle2',vehicle{2}.ctrl_sys.sys.x(1,:),'y_vehicle2',vehicle{2}.ctrl_sys.sys.x(2,:),...
+%     'x_vehicle3',vehicle{3}.ctrl_sys.sys.x(1,:),'y_vehicle3',vehicle{3}.ctrl_sys.sys.x(2,:),'distance', dist);
+%  
+% save('vehicle_circular23', 'dati');
 
 
 %% Plot Vehicles trajectory and velocities

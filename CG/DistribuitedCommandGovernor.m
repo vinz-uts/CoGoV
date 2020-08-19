@@ -16,7 +16,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             % Create an instance of a Distribuited Command Governor.
             obj = obj@CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0);
             obj.U = U;
-            obj.hi = -hi;
+            obj.hi = hi;
         end
         
         
