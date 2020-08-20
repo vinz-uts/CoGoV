@@ -14,7 +14,10 @@ close all;
 addpath('../../marine_vehicle');        addpath(genpath('../../util'));
 addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_2DOF_model_2
+%% Comment/Uncomment to choose precompensation technique
+vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
+
+% vehicle_2DOF_model % LQI controller (discrete time design)
 
 %% Vehicles
 N = 3; % number of vehicles
@@ -159,7 +162,7 @@ for j=1:N
 end
 T = [Ta;T];     gi = [ga;gi];
 
-cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
+cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
 %% Planner
 limits = [-Max_x, Max_x, Max_y, -Max_y];

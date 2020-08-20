@@ -11,10 +11,14 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+% addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+% addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_2DOF_model
+%% Comment/Uncomment to choose precompensation technique
+vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
+
+% vehicle_2DOF_model % LQI controller (discrete time design)
+
 
 %% Vehicles
 N = 3; % number of vehicles
@@ -146,7 +150,7 @@ for i=1:N
     end
     T = [Ta;T];     gi = [ga;gi];
     
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end
 
 

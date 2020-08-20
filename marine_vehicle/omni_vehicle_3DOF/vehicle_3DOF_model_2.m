@@ -37,63 +37,53 @@ B = [ 0   0   0  ;
       0  1/m  0  ;
       0   0  1/J ];
   
-%% Time discrete model
-% Using Forward Euler approximation: dz*Tc = z(k+1) - z(k)
-Tc = 0.1; % sampling time - [s]
-    
 Cy = [ 1 0 0 0 0 0 ;
        0 1 0 0 0 0 ;
        0 0 1 0 0 0 ];
+  
+%% Sampling time - [s]
+Tc = 0.1; % 
+    
+
    
 %% Augmented model for position tracking
 % δz(k) = z(k)-z(k-1)           - Incremental states
 % ε(k) = [(x(k)-x*),(y(k)-y*),(ϑ(k)-ϑ*)]' - Positions' errors
 % ξ(k) = [δz'(k),ε'(k)]'        - Augmented states
-
-%% LQ optimal control
-% u(k) = -F*z(k) -f*Σ(ε(i)) i=0..k
 Aaug=[A     zeros(6, 3);
      -Cy    zeros(3, 3)];
 Baug=[B;zeros(3,3)];
 Caug=[Cy,zeros(3,3)];
-% 
+
+
+%% Compute control law with R-stability design 
 Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(3,3)),1, pi/10,1.5, 0);
-%Fa = dlqr(Aa,Ba,Q,R);
+
+% Extracting feedback gain and feedforward gain from previous output 
 F = Fa(:,1:end-3);
 f = Fa(:,6+1:end);
 
 
 %% Pre-controlled system
 
-
 Acl=(Aaug-Baug*Fa);
 Bcl=[zeros(6, 3) ; eye(3)];
 AUVCL=ss(Acl,Bcl,Caug,zeros(3,3));
 
 
+%% Discrete time model 
+% Discrete model can be extracted using different methods
+
 P = c2d(AUVCL,Tc);
 
-%%%%%% for code compatibility
+%%%%%% for code compatibility keep this sign change
 f = -f;
 Fa=[F,f];
-
 
 %%%%%%
 
 Phi = P.A;     G = P.B;    Hy = P.C;
 
-
-% Only position constraints
-%Hc = [ eye(3)  zeros(3,6) ];
-%L = zeros(3,3);
-% Speed and input constraints
-%Hc = [ zeros(3,3) eye(3)  zeros(3,3) ;
-%              -F              f      ];
-%L = zeros(6,3);
-% Position and input constraints
-%Hc = [ eye(3)        zeros(3,6)      ;
-%              -F              f      ];
-%L = zeros(6,3);
 % Position, speed and input constraints
 Hc = [ eye(6)  zeros(6,3) ;
         -F         f      ];

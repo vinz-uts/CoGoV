@@ -56,7 +56,7 @@ d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come rifer
 T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = 0.01*eye(N); % vehicle's references weight matrix
+Psi = 0.01*eye(2); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
 
 %% Augmented System and Command Governor construction
@@ -151,7 +151,7 @@ for i=1:N
     vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end
 
-% Color the net
+%% Color the net
 colors = [0,1];
 vehicle{1}.color = colors(1);
 vehicle{2}.color = colors(2);
@@ -241,7 +241,6 @@ for t=1:NT
     end
     
     if(t==1)
-        legend('CG reference v2', 'Trajectory v2','Trajectory v1', 'CG reference v2','Reference v2', 'CG reference v2','AutoUpdate','off');
         title('Frontal Collision Simulation');
         xlabel('x [m]');
         ylabel('y [m]');

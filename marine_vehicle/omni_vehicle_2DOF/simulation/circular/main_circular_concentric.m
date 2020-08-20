@@ -6,7 +6,11 @@ close all;
 addpath('../../marine_vehicle');        addpath(genpath('../../util'));
 addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_2DOF_model_2
+%% Comment/Uncomment to choose precompensation technique
+vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
+
+% vehicle_2DOF_model % LQI controller (discrete time design)
+
 
 %% Vehicles
 N = 2; % number of vehicles
@@ -17,6 +21,19 @@ vehicle{1}.init_position(1.3,0);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle{2}.init_position(1.6,0.6);
+
+%%%%%%% Position and input constraints
+Hc = [ eye(2)        zeros(2,4)      ;
+        -F              f            ];  
+L = zeros(4,2);
+
+
+vehicle{1}.ctrl_sys.Hc = Hc;
+vehicle{1}.ctrl_sys.L = L;
+
+vehicle{2}.ctrl_sys.Hc = Hc;
+vehicle{2}.ctrl_sys.L = L;
+%%%%%%
 
 
 %% Net configuration
@@ -33,9 +50,7 @@ adj_matrix = [-1  1 ;
 d_max = 200; % maximum distance between vehicles - [m]
 d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
-% Vehicles input/speed constraints
-Max_x = 2; % max position value along x - [m]
-Max_y = 2; % max position value along y - [m]
+% Vehicles constraints
 T_max = 100; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
@@ -114,18 +129,15 @@ for i=1:N
         end
     end
     
-    % geometric and thrust constraints
+   % thrust constraints
     % T_*c_ ≤ gi_       single vehicle constraints
-    %      x  y Vx Vy Tx Ty
-    T_ = [ 1  0  0  0  0  0 ;
-        -1 0  0  0  0  0 ;
-        0  1  0  0  0  0 ;
-        0 -1  0  0  0  0 ;
-        0  0  0  0  1  0 ;
-        0  0  0  0 -1  0 ;
-        0  0  0  0  0  1 ;
-        0  0  0  0  0 -1 ];
-    gi_ = [Max_x,Max_x,Max_y,Max_y,T_max,T_max,T_max,T_max]';
+    %      x  y    Tx Ty
+    T_ = [ 
+           0  0    1  0 ;
+           0  0   -1  0 ;
+           0  0    0  1 ;
+           0  0    0 -1 ];
+    gi_ = [T_max,T_max,T_max,T_max]';
     
     Ta = T_;    ga = gi_;
     for j=1:k
@@ -134,12 +146,10 @@ for i=1:N
     end
     T = [Ta;T];     gi = [ga;gi];
     
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end
 
 %% Planner
-limits = [-Max_x, Max_x, Max_y, -Max_y];
-
 center = [0,0]';
 
 pl(1) =  CircularPlanner(center, 1.3, 0.4, 1);
@@ -159,7 +169,7 @@ NT = ceil(Tf/Tc_cg); % simulation steps number
 zerr = [0,0]';
 figure(1);
 hold on;
-axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
+axis([-3,3, -3,3]);
 
 dist = [];
 

@@ -1,3 +1,5 @@
+clear;
+close all;
 %%
 % Simulation of a potential collision where vehicle 1 and vehicle 2 have to
 % swap their relative positions
@@ -12,25 +14,24 @@ addpath('../../../../marine_vehicle');        addpath(genpath('../../../../util'
 addpath(genpath('../../../../tbxmanager'));   addpath('../../../../CG');
 
 %% Comment/Uncomment to choose precompensation technique
-vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
+vehicle_3DOF_model_2 % R-stability controller (continuous time desing)
 
-% vehicle_2DOF_model % LQI controller (discrete time design)
+% vehicle_3DOF_model % LQI controller (discrete time design)
 
 %% Vehicles
 N = 2; % number of vehicles
 
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(1,0);
+vehicle{1}.init_position(1,0,0);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(0,1);
+vehicle{2}.init_position(0,1,0);
 
 %%%%%%% Position and input constraints
-Hc = [ eye(2)        zeros(2,4)      ;
+Hc = [ eye(3)        zeros(3,6)      ;
         -F              f            ];  
-L = zeros(4,2);
-
+L = zeros(6,3);
 
 vehicle{1}.ctrl_sys.Hc = Hc;
 vehicle{1}.ctrl_sys.L = L;
@@ -53,13 +54,13 @@ adj_matrix = [-1  1 ;
 d_max = 200; % maximum distance between vehicles - [m]
 d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
-% Vehicles input/speed constraints
+% Vehicles constraints
 T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 % Vehicle's references weight matrix
-Psi = [ 1  0 ;
-        0  1  ];
+Psi = 1*eye(3); % vehicle's references weight matrix
+
 Psi_ = repmat({Psi},1,N);   Psi = blkdiag(Psi_{:});
 
 k0 = 10; % prediction horizon
@@ -133,17 +134,17 @@ for i=1:N
     end
 end
 
-% thrust constraints
+% Speed and thrust constraints
 % T_*c_ ≤ gi_       single vehicle constraints
-%      x  y    Tx Ty
+%          x  y Vx Vy Tx Ty
 T_ = [
-    0  0    1  0 ;
-    0  0   -1  0 ;
-    0  0    0  1 ;
-    0  0    0 -1 ];
-gi_ = [T_max,T_max,T_max,T_max]';
-
-
+    0  0  0   1  0  0 ;
+    0  0  0  -1  0  0 ;
+    0  0  0   0  1  0 ;
+    0  0  0   0 -1  0 ;
+    0  0  0   0  0  1 ;
+    0  0  0   0  0 -1 ];
+gi_ = [T_max,T_max,T_max,T_max,T_max,T_max]';
 
 Ta = [];    ga = [];
 for j=1:N
@@ -168,26 +169,31 @@ NT = ceil(Tf/Tc_cg); % simulation steps number
 
 figure(1);
 hold on;
-axis([-3,3, -3,3]);
+axis([-3, 3, -3,3]);
 dist = [];
 round = 1;
 cputime =[];
 yalmiptime = [];
 
 %%%%%%%%%% Crossed Collision References
-
-r{1}= [1,1.5]';
-r{2}= [1.5,1]';
+% 
+% r{1}= [1,1.5,0]';
+% r{2}= [1.5,1,0]';
 
 %%%%%%%%%% Frontal Collision References
 
 % Uncomment to test
-% % 
-% r{1}= vehicle{2}.ctrl_sys.sys.xi(1:2);
-% r{2}= vehicle{1}.ctrl_sys.sys.xi(1:2);
+
+ref1=vehicle{2}.ctrl_sys.sys.xi;
+ref2=vehicle{1}.ctrl_sys.sys.xi;
+
+r{1}= ref1(1:3);
+r{2}= ref2(1:3);
 
 
 nr = size(r{1},1); % size of single vehicle reference
+
+
 
 
 for t=1:NT
@@ -240,9 +246,11 @@ for t=1:NT
         figure(1);
         hold on;
         if(k==1)
-            plot(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),'b.');
+            plot_trajectory(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),vehicle{1}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{1}.ctrl_sys.sys.x(1,end),vehicle{1}.ctrl_sys.sys.x(2,end),'o');
         else
-            plot(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),'g.');
+            plot_trajectory(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),vehicle{2}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{2}.ctrl_sys.sys.x(1,end),vehicle{2}.ctrl_sys.sys.x(2,end),'x');
         end
         
     end

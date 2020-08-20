@@ -1,6 +1,9 @@
-%%
-% Simulation of a potential collision where vehicle 1 and vehicle 2 have to
-% swap their relative positions
+%%% Pool scenario
+
+% We consider 3 vehicles moving in a pool starting from different initial positions and moving
+% along straight line. When hitting the boundaries of the pool the new vehicle's trajectory starts
+% with the same strike angle. Vehicles have to avoid collision among them.
+% The topology is described by an Incidence matrix introduced below.
 
 
 %% Clear workspace
@@ -8,42 +11,26 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+% addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+% addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
 %% Comment/Uncomment to choose precompensation technique
-vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
+vehicle_3DOF_model_2 % R-stability controller (continuous time desing)
 
-% vehicle_2DOF_model % LQI controller (discrete time design)
+% vehicle_3DOF_model % LQI controller (discrete time design)
 
 %% Vehicles
 N = 3; % number of vehicles
 
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(1,0.5);
+vehicle{1}.init_position(0.5,-1,0);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(1.5,0.75);
+vehicle{2}.init_position(0,1,0);
 % Vehicle 3
 vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{3}.init_position(0.5,0);
-
-%%%%%%% Position and input constraints
-Hc = [ eye(2)        zeros(2,4)      ;
-        -F              f            ];  
-L = zeros(4,2);
-
-
-vehicle{1}.ctrl_sys.Hc = Hc;
-vehicle{1}.ctrl_sys.L = L;
-
-vehicle{2}.ctrl_sys.Hc = Hc;
-vehicle{2}.ctrl_sys.L = L;
-
-vehicle{3}.ctrl_sys.Hc = Hc;
-vehicle{3}.ctrl_sys.L = L;
-%%%%%%
+vehicle{3}.init_position(0,-1,0);
 
 
 %% Net configuration
@@ -54,29 +41,29 @@ adj_matrix = [-1 1  1;
     1 -1  0;
     1  0 -1];
 
-
 %% Vehicles constraints
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 200; % maximum distance between vehicles - [m]
-d_min = 0.1; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
-% Vehicles constraints
-T_max = 100; % max abs of motor thrust - [N]
+% Vehicles input/speed constraints
+Max_x = 2; % max position value along x - [m]
+Max_y = 2; % max position value along y - [m]
+T_max = 50; % max abs of motor thrust - [N]
+
+
 
 %% Command Governor parameters
 % Vehicle's references weight matrix
-Psi = [ 1  0 ;
-    0  1  ];
-Psitot=[];
+Psi = eye(3); % vehicle's references weight matrix
 
-for i=1:N
-    Psitot= blkdiag(Psitot,Psi);
-end
+Psi_ = repmat({Psi},1,N);   Psi = blkdiag(Psi_{:});
 
-Psi = Psitot;
 k0 = 10; % prediction horizon
+
+
 %% Augmented System construction
 % Augmented neighbour matrix
 % | ?(1)           |
@@ -89,15 +76,15 @@ Phi = [];    G = [];    Hc = [];    L = [];
 %L = vehicle{1}.ctrl_sys.L;
 for i=1:N
     Phi = blkdiag(Phi,vehicle{i}.ctrl_sys.Phi);
-	G = blkdiag(G,vehicle{i}.ctrl_sys.G);
-	Hc = blkdiag(Hc,vehicle{i}.ctrl_sys.Hc);
-	L = blkdiag(L,vehicle{i}.ctrl_sys.L);
+    G = blkdiag(G,vehicle{i}.ctrl_sys.G);
+    Hc = blkdiag(Hc,vehicle{i}.ctrl_sys.Hc);
+    L = blkdiag(L,vehicle{i}.ctrl_sys.L);
 end
 
 %% Constraints construction
 T = [];     gi = [];
 U = [];     hi = [];
-    
+
 nc = size(vehicle{1}.ctrl_sys.Hc,1); % single vehicle c dimension
 nca = nc*N; % augmented-c dimension
 
@@ -105,23 +92,23 @@ nca = nc*N; % augmented-c dimension
 for i=1:N
     for j=i+1:N
         if adj_matrix(i,j) == 1 % i,j are neighbours
-			% Split ||.||?
-			cnstr = zeros(4,nca);
+            % Split ||.||?
+            cnstr = zeros(4,nca);
             % split modules x constraints
             % |     -- i --       -- j --     |
             % |...   1 0 ..  ...  -1 0 ..  ...|
             % |...  -1 0 ..  ...   1 0 ..  ...|
-            cnstr(1,((i-1)*nc)+1) = 1; 
+            cnstr(1,((i-1)*nc)+1) = 1;
             cnstr(1,((j-1)*nc)+1) = -1;
-            cnstr(2,((i-1)*nc)+1) = -1; 
+            cnstr(2,((i-1)*nc)+1) = -1;
             cnstr(2,((j-1)*nc)+1) = 1;
             % split modules y constraints
             % |     -- i --       -- j --     |
             % |...  0  1 ..  ...  0 -1 ..  ...|
             % |...  0 -1 ..  ...  0  1 ..  ...|
-            cnstr(3,((i-1)*nc)+2) = 1; 
+            cnstr(3,((i-1)*nc)+2) = 1;
             cnstr(3,((j-1)*nc)+2) = -1;
-            cnstr(4,((i-1)*nc)+2) = -1; 
+            cnstr(4,((i-1)*nc)+2) = -1;
             cnstr(4,((j-1)*nc)+2) = 1;
             
             % Matrix for neighbour remoteness constraints
@@ -142,21 +129,26 @@ for i=1:N
             else
                 U = cnstr;
                 hi = [d_min,d_min,d_min,d_min]';
-            end    
+            end
         end
     end
 end
-% thrust constraints
-% T_*c_ ≤ gi_       single vehicle constraints
-%      x  y    Tx Ty
-T_ = [
-    0  0    1  0 ;
-    0  0   -1  0 ;
-    0  0    0  1 ;
-    0  0    0 -1 ];
-gi_ = [T_max,T_max,T_max,T_max]';
 
-
+ % geometric and thrust constraints
+    % T_*c_ ≤ gi_       single vehicle constraints
+    %      x  y  ϑ Vx Vy Vt Tx Ty Tt
+    T_ = [ 1  0  0  0  0  0  0  0  0;
+          -1  0  0  0  0  0  0  0  0;
+           0  1  0  0  0  0  0  0  0;
+           0 -1  0  0  0  0  0  0  0;
+           0  0  0  0  0  0  1  0  0;
+           0  0  0  0  0  0 -1  0  0;
+           0  0  0  0  0  0  0  1  0;
+           0  0  0  0  0  0  0 -1  0;
+           0  0  0  0  0  0  0  0  1;
+           0  0  0  0  0  0  0  0  -1];
+    gi_ = [Max_x,Max_x,Max_y,Max_y,T_max,T_max,T_max,T_max,T_max,T_max]';
+    
 
 Ta = [];    ga = [];
 for j=1:N
@@ -167,15 +159,12 @@ T = [Ta;T];     gi = [ga;gi];
 
 cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
-
 %% Planner
-center = [0,0.5]';
-center2 = [0.5,0]';
-center3 = [-0.5,0];
+limits = [-Max_x, Max_x, Max_y, -Max_y];
 
-pl(1) = CircularPlanner(center, 1, 0.4, 1);
-pl(2) =  CircularPlanner(center2, 1, 0.3, -1);
-pl(3) =  CircularPlanner(center3, 1, 0.4, 1);
+pl(1) =  BorderPlanner(1, 0.5, limits, 0.15);
+pl(2) =  BorderPlanner(1, -0.7, limits, 0.15);
+pl(3) =  BorderPlanner(1, 0.1, limits, 0.15);
 
 % Color the net
 colors = [0,1];
@@ -183,34 +172,41 @@ vehicle{1}.color = colors(1);
 vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
-zerr = [0,0]';
-
 %% Simulation Colored Round CG
-Tf = 200; % simulation time
+Tf = 30; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
-
 NT = ceil(Tf/Tc_cg); % simulation steps number
-zerr = [0,0]';
+
+%%% Set blockedd to true to ensure that vehicle 3 stands still
+blockedd=false;
+reference3= vehicle{3}.ctrl_sys.sys.xi;
+
+% Perimeter plotting
 figure(1);
 hold on;
-axis([-6, 6, -3, 6]);
-
-dist = [];
+x_plot = -Max_x:0.1:Max_x;
+y_plot = -Max_y:0.1:Max_y;
+plot(ones(size(y_plot))*x_plot(1), y_plot);
+plot(x_plot, ones(size(x_plot))*y_plot(1));
+plot(ones(size(y_plot))*x_plot(end), y_plot);
+plot(x_plot, ones(size(x_plot))*y_plot(end));
+axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
+dist=[];
+hold on;
+nr = size(reference3(1:3),1); % size of single vehicle reference
+r=[];
 
 round = 1;
 
-nr = 2; % size of single vehicle reference
-
-r=[];
-
-
 for t=1:NT
-       for i=1:N
+    for i=1:N
         plan = pl(i);
         
-       [r{i}, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
-  
-       
+        [r{i}, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+        r{i}=[r{i};0];
+        if(i==3 && blockedd)
+            r{3}=reference3(1:3);
+        end
     end
     xa = [];
      for i=1:N
@@ -246,33 +242,35 @@ for t=1:NT
     for k=1:N
         % Trajectory
         figure(1);  hold on;
+        
         if(k==1)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'b.');
+           plot_trajectory(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),vehicle{1}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{1}.ctrl_sys.sys.x(1,end),vehicle{1}.ctrl_sys.sys.x(2,end),'ok');
         end
         
         if(k==2)
-            
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'r.');
+            plot_trajectory(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),vehicle{2}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{2}.ctrl_sys.sys.x(1,end),vehicle{2}.ctrl_sys.sys.x(2,end),'xy');
         end
         
         if(k==3)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'k.');
+            plot_trajectory(vehicle{3}.ctrl_sys.sys.x(1,:),vehicle{3}.ctrl_sys.sys.x(2,:),vehicle{3}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{3}.ctrl_sys.sys.x(1,end),vehicle{3}.ctrl_sys.sys.x(2,end),'*b');
         end
         
         
     end
     
     if(t==1)
-        legend('Trajectory v1', 'Trajectory v2','Trajectory v3','AutoUpdate','off');
-        title('Intersected Circular Scenario Simulation');
+        legend('Left Border', 'Lower Border','Right Border', 'Upper Border','AutoUpdate','off');
+        title('Pool Scenario Simulation');
         xlabel('x [m]');
         ylabel('y [m]');
     end
-    drawnow;
     
+    drawnow;
     dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
 end
-
 figure;
 plot(0:Tc_cg:Tf-Tc_cg, dist);
 title('Distance between vehicle 1 and vehicle 2');

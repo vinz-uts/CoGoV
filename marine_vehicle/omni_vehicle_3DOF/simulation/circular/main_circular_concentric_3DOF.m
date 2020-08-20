@@ -3,41 +3,34 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+% addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+% addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
 %% Comment/Uncomment to choose precompensation technique
-vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
+vehicle_3DOF_model_2 % R-stability controller (continuous time desing)
 
-% vehicle_2DOF_model % LQI controller (discrete time design)
+% vehicle_3DOF_model % LQI controller (discrete time design)
 
 %% Vehicles
-N = 3; % number of vehicles
+N = 2; % number of vehicles
 
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(1,0.5);
+vehicle{1}.init_position(1.3,0,0);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(1.5,0.75);
-% Vehicle 3
-vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{3}.init_position(0.5,0);
+vehicle{2}.init_position(1.6,0.6,0);
 
 %%%%%%% Position and input constraints
-Hc = [ eye(2)        zeros(2,4)      ;
+Hc = [ eye(3)        zeros(3,6)      ;
         -F              f            ];  
-L = zeros(4,2);
-
+L = zeros(6,3);
 
 vehicle{1}.ctrl_sys.Hc = Hc;
 vehicle{1}.ctrl_sys.L = L;
 
 vehicle{2}.ctrl_sys.Hc = Hc;
 vehicle{2}.ctrl_sys.L = L;
-
-vehicle{3}.ctrl_sys.Hc = Hc;
-vehicle{3}.ctrl_sys.L = L;
 %%%%%%
 
 
@@ -45,22 +38,21 @@ vehicle{3}.ctrl_sys.L = L;
 %   1
 %  / \
 % 2   3
-adj_matrix = [-1  1  1;
-    1 -1  1;
-    1 1 -1];
+adj_matrix = [-1  1 ;
+    1 -1] ;
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 200; % maximum distance between vehicles - [m]
-d_min = 0.1; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
-% Vehicles input/speed constraints
+% Vehicles constraints
 T_max = 100; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = eye(2); % vehicle's references weight matrix
+Psi = eye(3); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
 
 %% Augmented System and Command Governor construction
@@ -135,15 +127,18 @@ for i=1:N
         end
     end
     
-    % thrust constraints
+    % Speed and thrust constraints
     % T_*c_ ≤ gi_       single vehicle constraints
-    %      x  y    Tx Ty
-    T_ = [ 
-           0  0    1  0 ;
-           0  0   -1  0 ;
-           0  0    0  1 ;
-           0  0    0 -1 ];
-    gi_ = [T_max,T_max,T_max,T_max]';
+    %      x  y  ϑ  Tx Ty Tϑ
+    T_ = [
+           0  0  0   1  0  0 ;
+           0  0  0  -1  0  0 ;
+           0  0  0   0  1  0 ;
+           0  0  0   0 -1  0 ;
+           0  0  0   0  0  1 ;
+           0  0  0   0  0 -1 ];
+    gi_ = [T_max,T_max,T_max,T_max,T_max,T_max]';
+    
     
     Ta = T_;    ga = gi_;
     for j=1:k
@@ -156,30 +151,26 @@ for i=1:N
 end
 
 %% Planner
+center = [0,0]';
 
-center = [0,0.5]';
-center2 = [0.5,0]';
-center3 = [-0.5,0];
-
-pl(1) = CircularPlanner(center, 1, 0.4, 1);
-pl(2) =  CircularPlanner(center2, 1, 0.3, -1);
-pl(3) =  CircularPlanner(center3, 1, 0.4, 1);
+pl(1) =  CircularPlanner(center, 1.3, 0.4, 1);
+pl(2) =  CircularPlanner(center, 1.3, 0.6, -1);
 
 % Color the net
 colors = [0,1];
 vehicle{1}.color = colors(1);
 vehicle{2}.color = colors(2);
-vehicle{3}.color = colors(2);
+
 
 %% Simulation Colored Round CG
-Tf = 200; % simulation time
+Tf = 75; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 
 NT = ceil(Tf/Tc_cg); % simulation steps number
-
+zerr = [0,0]';
 figure(1);
 hold on;
-axis([-5, 5, -5, 5]);
+axis([-3,3, -3, 3]);
 
 dist = [];
 
@@ -200,10 +191,10 @@ for t=1:NT
                 end
             end
             
-            
             plan = pl(i);
-            [r{i}, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
-            g = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
+            [r, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            
+            g = vehicle{i}.cg.compute_cmd(xa, [r;0], g_n);
             
             if ~isempty(g)
                 vehicle{i}.g = g;
@@ -219,34 +210,29 @@ for t=1:NT
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
-
+    
     for k=1:N
         % Trajectory
-        figure(1);  hold on;
+        figure(1);
+        hold on;
         if(k==1)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'b.');
+            plot_trajectory(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),vehicle{1}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{1}.ctrl_sys.sys.x(1,end),vehicle{1}.ctrl_sys.sys.x(2,end),'o');
+        else
+            plot_trajectory(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),vehicle{2}.ctrl_sys.sys.x(3,:));
+            plot(vehicle{2}.ctrl_sys.sys.x(1,end),vehicle{2}.ctrl_sys.sys.x(2,end),'x');
         end
-        
-        if(k==2)
-            
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'r.');
-        end
-        
-        if(k==3)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'k.');
-        end
-        
         
     end
     
     if(t==1)
-        legend('Trajectory v1', 'Trajectory v2','Trajectory v3','AutoUpdate','off');
-        title('Intersected Circular Scenario Simulation');
+        legend('Trajectory v1', 'Trajectory v2','AutoUpdate','off');
+        title('Concentric Circular Scenario Simulation');
         xlabel('x [m]');
         ylabel('y [m]');
     end
-    drawnow;
     
+    drawnow;
     dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
 end
 
@@ -255,7 +241,4 @@ plot(0:Tc_cg:Tf-Tc_cg, dist);
 title('Distance between vehicle 1 and vehicle 2');
 xlabel('time [s]');
 ylabel('distance [m]');
-
-
-
 
