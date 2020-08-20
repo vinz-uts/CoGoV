@@ -31,6 +31,14 @@ B = [ 0   0  ;
 % Using Forward Euler approximation: dz*Tc = z(k+1) - z(k)
 Tc = 0.1; % sampling time - [s]
 
+%   
+% syst= ss(A,B,Cy,zeros(2,2));
+% sysd= c2d(syst,Tc,'foh');
+% 
+% Ad = sysd.A;
+% 
+% Bd = sysd.B; 
+
 Ad = [ 1   0     Tc        0     ;
        0   1     0         Tc    ;
        0   0  1-c/m*Tc     0     ;
@@ -54,17 +62,18 @@ Ba = [  Bd  ;
       Cy*Bd ];
 Ca = [ zeros(2,4)  eye(2) ];
 
+
 %% LQ optimal control
 % u(k) = -F*z(k) -f*Σ(ε(i)) i=0..k
 Q = [0  0  0  0  0  0  ;
      0  0  0  0  0  0  ;
      0  0  0  0  0  0  ;
      0  0  0  0  0  0  ;
-     0  0  0  0 100 0  ;
-     0  0  0  0  0 100 ];
+     0  0  0  0 1000 0  ;
+     0  0  0  0  0 1000 ];
  
-R = [ 0.1  0  ;
-       0  0.1 ];
+R = [ 1  0  ;
+       0 1 ];
 
 Fa = dlqr(Aa,Ba,Q,R);
 F = Fa(:,1:end-2);

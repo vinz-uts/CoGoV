@@ -36,6 +36,10 @@ classdef Discrete_integrator < handle
             obj.K = K;
         end
         
+        function obj = setinstate(obj,xin)
+            obj.x_corr = xin;
+            obj.x_next = xin;
+        end
         % Compute the integration operation according to a specific method
         % input:
         % u         - input value
@@ -75,6 +79,9 @@ classdef Discrete_integrator < handle
             % integrator state update
             obj.x_corr = obj.x_next;
         end
+        
+
     end
+    
 end
 

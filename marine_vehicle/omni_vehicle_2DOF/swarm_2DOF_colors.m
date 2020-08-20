@@ -8,7 +8,7 @@ vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
 %% Simulation Colored Round CG
-Tf = 5; % simulation time
+Tf = 20; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 r{1} = [4,0.5]'; % position references
 r{2} = [3,1]'; % position references
@@ -35,7 +35,8 @@ for t=1:NT
                 end
             end
         
-            g = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
+            [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
+            
             if ~isempty(g)
                 vehicle{i}.g = g;
                 cputime= [cputime,s.solvertime];
@@ -47,7 +48,7 @@ for t=1:NT
         end
     end
     for i=1:N
-        vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
+        vehicle{i}.ctrl_sys.sim(r{i},Tc_cg);
     end
     round = rem(round,length(colors))+1;
 end

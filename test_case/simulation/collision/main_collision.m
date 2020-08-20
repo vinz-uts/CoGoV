@@ -11,7 +11,7 @@ close all;
 addpath('../../marine_vehicle');        addpath(genpath('../../util'));
 addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_2DOF_model
+vehicle_2DOF_model_2
 
 %% Vehicles
 N = 2; % number of vehicles
@@ -43,7 +43,7 @@ Max_y = 2; % max position value along y - [m]
 T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = eye(2); % vehicle's references weight matrix
+Psi = 0.01*eye(2); % vehicle's references weight matrix
 k0 = 30; % prediction horizon
 
 %% Augmented System and Command Governor construction
@@ -152,7 +152,7 @@ vehicle{2}.color = colors(2);
 
 
 %% Simulation Colored Round CG
-Tf = 5; % simulation time
+Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 figure(1);
@@ -160,18 +160,20 @@ hold on;
 axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
 dist = [];
 round = 1;
+cputime =[];
+yalmiptime = [];
 
 %%%%%%%%%% Crossed Collision References
 
-reference1= [1,1.5]';
-reference2= [1.5,1]';
+% reference1= [1,1.5]';
+% reference2= [1.5,1]';
 
 %%%%%%%%%% Frontal Collision References
 
 % Uncomment to test
 
-% reference1= vehicle{2}.ctrl_sys.sys.xi;
-% reference2= vehicle{1}.ctrl_sys.sys.xi;
+reference1= vehicle{2}.ctrl_sys.sys.xi;
+reference2= vehicle{1}.ctrl_sys.sys.xi;
 
 
 
@@ -200,7 +202,7 @@ for t=1:NT
                 r=reference2(1:2);
             end
             
-            g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
+            [g,s] = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
             %%%%%%%% to check incorrect zero reference computed by CG
             if(i==1)
@@ -218,6 +220,8 @@ for t=1:NT
             
             if ~isempty(g)
                 vehicle{i}.g = g;
+                cputime= [cputime,s.solvertime];
+                yalmiptime=[yalmiptime,s.yalmiptime];
             else
                 disp('WARN: old references');
                 t,i
@@ -257,6 +261,8 @@ end
 
 figure;
 plot(1:NT, dist);
+hold on;
+plot(1:NT,0.3*ones(1,length(1:NT)));
 title('Distance between vehicles');
 xlabel('time [s]');
 ylabel('distance [m]');

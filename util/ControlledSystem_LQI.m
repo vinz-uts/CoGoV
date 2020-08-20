@@ -1,7 +1,7 @@
 classdef ControlledSystem_LQI < handle
     %% CONTROLLED SYSTEM LQI
     %  Define a time-discrete dynamic closed-loop system with a state-space model:
-    %  z(k+1) = Φ*z(k) + G*r(k)
+    %  z(k+1) = ?*z(k) + G*r(k)
     %   y(k)  = Hy*z(k)
     %   c(k)  = Hc*z(k) + L*r(k)
      
@@ -10,7 +10,7 @@ classdef ControlledSystem_LQI < handle
         Tc % sampling time
         Fa % Optimal feedback control gain
         Cy % tracking system outputs
-        Phi % closed-loop state-space model Φ matrix
+        Phi % closed-loop state-space model ? matrix
         G % closed-loop state-space model G matrix
         Hc % closed-loop state-space model Hc matrix
         L % closed-loop state-space model L matrix
@@ -36,7 +36,7 @@ classdef ControlledSystem_LQI < handle
             obj.Hc = Hc;
             obj.L = L;
             obj.xci = zeros(size(Fa,1),1);
-            obj.int = Discrete_integrator(obj.xci, Tc, 0.5); % the integration gain must be chosen carefully 0.5 R-stab 2 LQI
+            obj.int = Discrete_integrator(obj.xci, Tc, 1); % Tc = 1 accumulation D-LQI, Tc = Tc_sys integration R stability
         end
             
         
@@ -48,18 +48,20 @@ classdef ControlledSystem_LQI < handle
             
             N = ceil(T/(obj.Tc)); % simulation steps number
             e = obj.xci; % initial error value
+
+            obj.int.setinstate(e);
             nt = length(obj.sys.t); % length of last simulation
             %nx = size(obj.sys.A,1);
             nx = obj.sys.nx;
 
             for i=1:N
-                u = -obj.Fa(:,1:nx)*obj.sys.xi - obj.Fa(:,nx+1:end)*e; % - R-stab + LQI
+                u = -obj.Fa(:,1:nx)*obj.sys.xi + obj.Fa(:,nx+1:end)*e;
                 obj.sys.sim(u,obj.Tc); % simulate system
                 
                 obj.r = [obj.r r.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];
                 obj.xc = [obj.xc e.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];
+                  e = obj.int.integrate((r - obj.Cy*obj.sys.xi),'forward');
 %                e = e + (r - obj.Cy*obj.sys.xi); % update incremental errors
-                e = obj.int.integrate((r - obj.Cy*obj.sys.xi));
                 nt = length(obj.sys.t); % update length of simulation vectors
             end
             obj.xci = e; % update controller states

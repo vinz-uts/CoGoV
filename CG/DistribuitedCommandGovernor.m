@@ -71,6 +71,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                       
             catch Exc
                 disp('WARN: infeasible');
+                s = [];
                 g = [];
             end
         end    

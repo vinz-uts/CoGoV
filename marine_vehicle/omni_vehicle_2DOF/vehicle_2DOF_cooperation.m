@@ -35,12 +35,12 @@ adj_matrix = [-1  1  1;
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 2; % maximum distance between vehicles - [m]
-d_min = 0.5; % minimum distance between vehicles - [m]
+d_min = 0.1; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
-Vx = 2; % max abs of speed along x - [m/s]
-Vy = 2; % max abs of speed along y - [m/s]
-T_max = 100; % max abs of motor thrust - [N]
+Vx = 200; % max abs of speed along x - [m/s]
+Vy = 200; % max abs of speed along y - [m/s]
+T_max = 1000; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = eye(2); % vehicle's references weight matrix
@@ -58,6 +58,13 @@ for i=1:N
 	Hc = vehicle{i}.ctrl_sys.Hc;
 	L = vehicle{i}.ctrl_sys.L;
     
+%     %%%%%% WARN: if not selected correct constraints matrix in vehicle_model.m
+%     Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
+%         -F              -f      ];
+%     L = zeros(4,2);
+%     vehicle{i}.ctrl_sys.Hc = Hc;    vehicle{i}.ctrl_sys.L = L;
+%     %%%%%%
+
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
 			Phi = blkdiag(Phi,vehicle{j}.ctrl_sys.Phi);
@@ -121,6 +128,7 @@ for i=1:N
     % Speed and thrust constraints
     % T_*c_ ≤ gi_       single vehicle constraints
     %      x  y Vx Vy Tx Ty
+    
     T_ = [ 0  0  1  0  0  0 ;
            0  0 -1  0  0  0 ;
            0  0  0  1  0  0 ;

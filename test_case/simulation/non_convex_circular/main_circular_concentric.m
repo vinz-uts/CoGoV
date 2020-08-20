@@ -6,7 +6,7 @@ close all;
 addpath('../../marine_vehicle');        addpath(genpath('../../util'));
 addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_2DOF_model
+vehicle_2DOF_model_2
 
 %% Vehicles
 N = 2; % number of vehicles
@@ -152,7 +152,7 @@ vehicle{2}.color = colors(2);
 
 
 %% Simulation Colored Round CG
-Tf = 15; % simulation time
+Tf = 75; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 
 NT = ceil(Tf/Tc_cg); % simulation steps number

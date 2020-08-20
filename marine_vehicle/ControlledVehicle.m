@@ -35,6 +35,7 @@ classdef ControlledVehicle < handle
                 obj.g = [x,y,th]';
             end
             obj.ctrl_sys.xci = f\F*obj.ctrl_sys.sys.xi;
+
             
         end
         
