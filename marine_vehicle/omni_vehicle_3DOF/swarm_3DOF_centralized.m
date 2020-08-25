@@ -172,13 +172,15 @@ for t=1:NT
         for j=1:N
             r_ = [r_;r{j}];
         end
-        g = cg.compute_cmd(xa,r_);
-        if ~isempty(g)
+    end
+    g = cg.compute_cmd(xa,r_);
+    if ~isempty(g)
+        for i=1:N
             vehicle{i}.g = g(((i-1)*nr)+1:((i-1)*nr)+nr);
-        else
-            disp('WARN: old references');
-            t,i
         end
+    else
+        disp('WARN: old references');
+        t,i
     end
     
     for i=1:N
