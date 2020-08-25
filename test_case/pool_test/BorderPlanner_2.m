@@ -106,27 +106,27 @@ classdef BorderPlanner_2
             if((obj.direction > 0 && obj.m < 0) || ((obj.direction < 0 && obj.m > 0)))
                 % lower right corner
                 if((obj.direction > 0 && obj.m < 0))
-                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]' -0.1;
+                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]';
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]'-0.1;
+                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]';
                     end
                 else % lower left corner
-                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]'-0.1;
+                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]';
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]'-0.1;
+                        r = [inv_rect(obj.r_old, obj.limits.y_b), obj.limits.y_b]';
                     end
                 end
             else
                 % upper left corner
                 if((obj.direction < 0 && obj.m < 0))
-                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]'-0.1;
+                    r = [obj.limits.x_l, rect(obj.r_old, obj.limits.x_l)]';
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]'-0.1;
+                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]';
                     end
                 else % upper right corner
-                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]'-0.1;
+                    r = [obj.limits.x_r, rect(obj.r_old, obj.limits.x_r)]';
                     if(not(obj.is_admissible(r)))
-                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]'-0.1;
+                        r = [inv_rect(obj.r_old, obj.limits.y_t), obj.limits.y_t]';
                     end
                 end
             end

@@ -19,7 +19,7 @@ N = 3; % number of vehicles
     vehicle{2}.init_position(1.3,0);
 	% Vehicle 3
 	vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-    vehicle{3}.init_position(1.6,0);
+    vehicle{3}.init_position(1.6,0.6);
 %end
 
 %% Net configuration
@@ -27,8 +27,8 @@ N = 3; % number of vehicles
 %  / \
 % 2   3
 adj_matrix = [-1  0  0;
-			   0 -1  0;
-			   0 0 -1];
+			   0 -1  1;
+			   0 1 -1];
 
 %% Vehicles constraints
 % Vehicles swarm position constraints

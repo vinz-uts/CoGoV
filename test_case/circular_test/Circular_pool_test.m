@@ -8,7 +8,7 @@ center = [0,0]';
 
 pl(1) = CircularPlanner(center, 1, 0.4, 1);
 pl(2) =  CircularPlanner(center, 1.3, 0.4, 1);
-pl(3) =  CircularPlanner(center, 1.6, 0.4, -1);
+pl(3) =  CircularPlanner(center, 1.3, 0.6, -1);
 
 % Color the net
 colors = [0,1];
@@ -17,7 +17,7 @@ vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
 %% Simulation Colored Round CG
-Tf = 20; % simulation time
+Tf = 15; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 % r{1} = [4,0.5]'; % position references
 % r{2} = [3,1]'; % position references
@@ -34,6 +34,7 @@ plot(ones(size(y_plot))*x_plot(end), y_plot);
 plot(x_plot, ones(size(x_plot))*y_plot(end));
 axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
 hold on;
+dist = [];
 
 round = 1;
 for t=1:NT 
@@ -58,16 +59,18 @@ for t=1:NT
 
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
-            if(i==1)
-                plot(r(1), r(2), 'bx');
-                if(not(isempty(g)))
-                    if(norm(g-zerr)==0)
-                        
-                        disp('WARN: Zero reference');
-                    end
-                    plot(g(1), g(2), 'rx');
-                end
-            end
+            
+%             if(i==1)
+%                 
+%                 plot(r(1), r(2), 'bx');
+%                 if(not(isempty(g)))
+%                     if(norm(g-zerr)==0)
+%                         
+%                         disp('WARN: Zero reference');
+%                     end
+%                     plot(g(1), g(2), 'rx');
+%                 end
+%             end
             if ~isempty(g)
                 vehicle{i}.g = g;
                 if(i==1)
@@ -94,9 +97,9 @@ for t=1:NT
     for k=1:N
     % Trajectory
     figure(1);  hold on;
-    if(k==1)
-        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'b.');
-    end
+%     if(k==1)
+%         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:),'b.');
+%     end
     
     if(k==2)
         
@@ -110,7 +113,13 @@ for t=1:NT
 %     plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end),'o');
     drawnow;
     end
+    dist=[dist, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
  end
+dati = struct('x_vehicle1',vehicle{1}.ctrl_sys.sys.x(1,:),'y_vehicle1',vehicle{1}.ctrl_sys.sys.x(2,:),...
+    'x_vehicle2',vehicle{2}.ctrl_sys.sys.x(1,:),'y_vehicle2',vehicle{2}.ctrl_sys.sys.x(2,:),...
+    'x_vehicle3',vehicle{3}.ctrl_sys.sys.x(1,:),'y_vehicle3',vehicle{3}.ctrl_sys.sys.x(2,:),'distance', dist);
+ 
+save('vehicle_circular23', 'dati');
 
 
 %% Plot Vehicles trajectory and velocities

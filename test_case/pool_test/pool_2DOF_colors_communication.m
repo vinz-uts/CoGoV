@@ -4,9 +4,9 @@ vehicle_2DOF_cooperation_pool_communication
 %% Planner
 limits = [-Max_x, Max_x, Max_y, -Max_y];
 
-pl(1) =  BorderPlanner(0.5, 0.3, limits, 0.15);
-pl(2) =  BorderPlanner(0.5, -0.7, limits, 0.15);
-pl(3) =  BorderPlanner(0.5, 0.1, limits, 0.15);
+pl(1) =  BorderPlanner(1, 0.5, limits, 0.15);
+pl(2) =  BorderPlanner(1, -0.7, limits, 0.15);
+pl(3) =  BorderPlanner(1, 0.1, limits, 0.15);
 
 % Color the net
 colors = [0,1];
@@ -31,6 +31,7 @@ plot(x_plot, ones(size(x_plot))*y_plot(1));
 plot(ones(size(y_plot))*x_plot(end), y_plot);
 plot(x_plot, ones(size(x_plot))*y_plot(end));
 axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
+dist=[];
 hold on;
 
 round = 1;
@@ -52,20 +53,28 @@ for t=1:NT
             
  %
             plan = pl(i);
+            
+
+             
             [r, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            
+             if(i==3)
+                r=[0,-1]';
+             end
+            
 
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
-            if(i==1)
-                plot(r(1), r(2), 'bx');
-                if(not(isempty(g)))
-                    if(norm(g-zerr)==0)
-                        
-                        disp('WARN: Zero reference');
-                    end
-                    plot(g(1), g(2), 'rx');
-                end
-            end
+%             if(i==1)
+%                 plot(r(1), r(2), 'bx');
+%                 if(not(isempty(g)))
+%                     if(norm(g-zerr)==0)
+%                         
+%                         disp('WARN: Zero reference');
+%                     end
+%                     plot(g(1), g(2), 'rx');
+%                 end
+%             end
             if ~isempty(g)
                 vehicle{i}.g = g;
                 if(i==1)
@@ -108,4 +117,14 @@ for t=1:NT
 %     plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end),'o');
     drawnow;
     end
- end
+    dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+end
+ 
+
+dati = struct('x_vehicle1',vehicle{1}.ctrl_sys.sys.x(1,:),'y_vehicle1',vehicle{1}.ctrl_sys.sys.x(2,:),...
+    'x_vehicle2',vehicle{2}.ctrl_sys.sys.x(1,:),'y_vehicle2',vehicle{2}.ctrl_sys.sys.x(2,:),...
+    'x_vehicle3',vehicle{3}.ctrl_sys.sys.x(1,:),'y_vehicle3',vehicle{3}.ctrl_sys.sys.x(2,:),'distance', dist);
+ 
+save('pool_dist05', 'dati');
+
+

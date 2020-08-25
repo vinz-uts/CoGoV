@@ -26,16 +26,16 @@ N = 3; % number of vehicles
 %   1
 %  / \
 % 2   3
-adj_matrix = [-1  0  0;
-			   0 -1  0;
-			   0 0 -1];
+adj_matrix = [-1  1  1;
+			   1 -1  0;
+			   1 0 -1];
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 200; % maximum distance between vehicles - [m]
-d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+d_min = 0.1; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
 % Vehicles input/speed constraints
 Max_x = 2; % max abs of speed along x - [m/s]

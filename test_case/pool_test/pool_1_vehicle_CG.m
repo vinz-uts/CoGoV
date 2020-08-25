@@ -45,7 +45,7 @@ vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 
 %%
 limits = [-Max_x, Max_x, Max_y, -Max_y];
-pl = BorderPlanner(0.5, -0.7, limits, 0.15);
+pl = BorderPlanner_2(0.5, -0.7, limits, 0.15);
 
 %% Discrete circle trajectory
 Ns = 20; % trajectory discretization steps

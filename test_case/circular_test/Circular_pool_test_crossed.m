@@ -9,7 +9,8 @@ center2 = [0.5,0]';
 center3 = [-0.5,0];
 
 pl(1) = CircularPlanner(center, 1, 0.4, 1);
-pl(2) =  CircularPlanner(center2, 1, 0.4, -1);
+pl(2) =  CircularPlanner(center2, 1, 0.3, -1);
+
 pl(3) =  CircularPlanner(center3, 1, 0.4, 1);
 
 % Color the net
@@ -19,7 +20,7 @@ vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
 %% Simulation Colored Round CG
-Tf = 20; % simulation time
+Tf = 30; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 % r{1} = [4,0.5]'; % position references
 % r{2} = [3,1]'; % position references
@@ -36,6 +37,7 @@ plot(ones(size(y_plot))*x_plot(end), y_plot);
 plot(x_plot, ones(size(x_plot))*y_plot(end));
 axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
 hold on;
+dist = [];
 
 round = 1;
 for t=1:NT 
@@ -57,7 +59,7 @@ for t=1:NT
  %
             plan = pl(i);
             [r, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
-
+            
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
             if(i==1)
@@ -112,8 +114,14 @@ for t=1:NT
 %     plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end),'o');
     drawnow;
     end
- end
-
+    dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+end
+ 
+dati = struct('x_vehicle1',vehicle{1}.ctrl_sys.sys.x(1,:),'y_vehicle1',vehicle{1}.ctrl_sys.sys.x(2,:),...
+    'x_vehicle2',vehicle{2}.ctrl_sys.sys.x(1,:),'y_vehicle2',vehicle{2}.ctrl_sys.sys.x(2,:),...
+    'x_vehicle3',vehicle{3}.ctrl_sys.sys.x(1,:),'y_vehicle3',vehicle{3}.ctrl_sys.sys.x(2,:),'distance', dist);
+ 
+save('vehicle_circular_crossed_3', 'dati');
 
 %% Plot Vehicles trajectory and velocities
 
