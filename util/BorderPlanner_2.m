@@ -1,6 +1,5 @@
 classdef BorderPlanner_2
-    %setenv('GRB_LICENSE_FILE', 'C:\Program\gurobi.lic');
-    %% BORDER PLANNER
+    %% BORDER PLANNER 2
     % Concrete class used to compute references in a pool. When hitting the
     % boundaries of the pool, the new vehicle's trajectory starts with the
     % same strike angle.
@@ -10,6 +9,9 @@ classdef BorderPlanner_2
     % The new references are calculated as the intersection between 
     % the straight lines that define the boundaries of the pool and the 
     % straight line that characterizes the movement of the vehicle.
+    % In this version the references are computed directly on the edge 
+    % of the pool
+
 
     
     properties
@@ -63,7 +65,7 @@ classdef BorderPlanner_2
                 p = [sys.x(1, end); sys.x(2, end)];
             end
             
-            % The reference is not updated if it has not been reached
+            % The reference is not updated if the current one has not been reached
             if(not(isempty(obj.r_old)) && norm(p - obj.r_old) > obj.tol)
                 r = obj.r_old;
                 return;
@@ -91,10 +93,6 @@ classdef BorderPlanner_2
                 end
             end
             
-%             if((isempty(obj.q)))
-%                 obj.q = p(2) - obj.m*p(1); 
-%             end
-
             obj.p_old = p;
             
             % compute the line equation using the family of straight lines
