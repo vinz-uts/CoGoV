@@ -17,6 +17,7 @@ classdef ControlledSystem_LQI < handle
         xc % simulation controller-states array
         r % simulation references array
         xci % controller initial conditions
+        int
     end
     
     
@@ -35,6 +36,7 @@ classdef ControlledSystem_LQI < handle
             obj.Hc = Hc;
             obj.L = L;
             obj.xci = zeros(size(Fa,1),1);
+            obj.int = Discrete_integrator(obj.xci, Tc, 0.5); % the integration gain must be chosen carefully 0.5 R-stab 2 LQI
         end
             
         
@@ -51,12 +53,13 @@ classdef ControlledSystem_LQI < handle
             nx = obj.sys.nx;
 
             for i=1:N
-                u = -obj.Fa(:,1:nx)*obj.sys.xi + obj.Fa(:,nx+1:end)*e;
+                u = -obj.Fa(:,1:nx)*obj.sys.xi - obj.Fa(:,nx+1:end)*e; % - R-stab + LQI
                 obj.sys.sim(u,obj.Tc); % simulate system
                 
                 obj.r = [obj.r r.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];
                 obj.xc = [obj.xc e.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];
-                e = e + (r - obj.Cy*obj.sys.xi); % update incremental errors
+%                e = e + (r - obj.Cy*obj.sys.xi); % update incremental errors
+                e = obj.int.integrate((r - obj.Cy*obj.sys.xi));
                 nt = length(obj.sys.t); % update length of simulation vectors
             end
             obj.xci = e; % update controller states

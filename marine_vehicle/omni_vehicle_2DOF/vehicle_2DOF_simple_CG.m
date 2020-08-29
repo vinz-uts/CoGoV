@@ -22,7 +22,7 @@ close all;
 addpath('../../marine_vehicle');        addpath(genpath('../../util'));
 addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_2DOF_model % WARN: Select the correct constraints matrix Hc, L.
+vehicle_2DOF_model_2 % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle.init_position(0,0); % set vehicle's initial position
 
@@ -60,18 +60,19 @@ vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 
 %% Simulation
-Tf = 3; % simulation time
+Tf = 20; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
 r = [2,3]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
-
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
     g = vehicle.cg.compute_cmd(xa,r);
-    vehicle.ctrl_sys.sim(g,Tc_cg);
+    vehicle.ctrl_sys.sim(r,Tc_cg);
 end
 
 %% Plot Simulation Result
 plot_simulation(vehicle.ctrl_sys);
+figure
+plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'.');
