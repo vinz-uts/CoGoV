@@ -8,7 +8,7 @@ vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
 %% Simulation Colored Round CG
-Tf = 5; % simulation time
+Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 r{1} = [4,0.5,0]'; % position references
 r{2} = [3,1,0]'; % position references
@@ -24,9 +24,9 @@ for t=1:NT
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
             % Modify: modify the angular reference after the cg
-            if norm([vehicle{i}.g(1)-x(1) vehicle{i}.g(2)-x(2)]) > epsilon
-                r{i}(3) = atan2(vehicle{i}.g(2)-x(2),vehicle{i}.g(1)-x(1));
-            end
+%             if norm([vehicle{i}.g(1)-x(1) vehicle{i}.g(2)-x(2)]) > epsilon
+%                 r{i}(3) = atan2(vehicle{i}.g(2)-x(2),vehicle{i}.g(1)-x(1));
+%             end
             g_n = [];
             for j=1:N
                 if adj_matrix(i,j) == 1 % i,j is neighbour

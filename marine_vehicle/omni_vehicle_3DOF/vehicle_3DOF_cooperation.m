@@ -3,9 +3,9 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices 
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
-vehicle_3DOF_model
+% addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+% addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+vehicle_3DOF_model_2
 
 %% Vehicles
 N = 3; % number of vehicles

@@ -20,7 +20,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
         end
         
         
-        function [g,s] = compute_cmd(obj,x,r,g_n)
+        function [g, ris] = compute_cmd(obj,x,r,g_n)
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % global conditions x and g_n reference for the other systems.
@@ -56,22 +56,24 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 obj_fun = (r-g)'*obj.Psi*(r-g);
                 
                 % Solver options
-                assign(g,[100,100]');
+                assign(g, [100, 100, pi]');
                 
-                options = sdpsettings('verbose',0,'solver','gurobi','usex0',1);
+                options = sdpsettings('verbose',0,'solver','bmibnb','usex0',1);
 
-                s = solvesdp(cnstr,obj_fun,options);
+                ris = solvesdp(cnstr,obj_fun,options);
                 g = double(g);
                 
-                if(s.problem ~= 0)
-                    fprintf("WARNING! Problem %d visit \n https://www.gurobi.com/documentation/9.0/refman/optimization_status_codes.html \n ",s.problem);
+                if(ris.problem ~= 0)
+                   fprintf(...
+                   "WARNING! Problem %d visit \n https://www.gurobi.com/documentation/9.0/refman/optimization_status_codes.html \n %s\n", ris.problem, ris.info...
+                   );
                     g = [];      
                 end
                 
                       
             catch Exc
-                disp('WARN: infeasible');
-                s = [];
+                warning('Exception thrown during optimization: \n info: %s \n', getReport(Exc));
+                ris = [];
                 g = [];
             end
         end    

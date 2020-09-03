@@ -57,6 +57,7 @@ V =  V1 + V2 + V3  + V4;
 
 opts = sdpsettings;
 opts.solver = solver_name;
+opts.verbose = 0;
 
 % we only look for a feasible solution so we can omit the objective function
 yalmipdiagnostics = optimize(V, [], opts);

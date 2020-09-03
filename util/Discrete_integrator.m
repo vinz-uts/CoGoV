@@ -22,14 +22,21 @@ classdef Discrete_integrator < handle
     end
     
     methods
-        % Class constructor
-        % input:
-        % x0        - initial state
-        % Tc        - sampling time
-        % K         - gain
-        % output: 
-        % obj       - Discrete Integrator instance
+        
         function obj = Discrete_integrator(x0, Tc, K)
+            % Class constructor
+            % input:
+            % x0        - initial state
+            % Tc        - sampling time; if Tc = 1 the integrator is in
+            %             accumulation mode
+            % K         - gain
+            % output:
+            % obj       - Discrete Integrator instance
+            
+            if(not(iscolumn(x0)))
+                x0 = x0';
+            end
+            
             obj.Tc = Tc;
             obj.x_corr = x0;
             obj.x_next = x0;
@@ -37,19 +44,32 @@ classdef Discrete_integrator < handle
         end
         
         function obj = setinstate(obj,xin)
+            % Set the initial state condition
+            % input:
+            % xin       - initial values
+            
+            if(not(iscolumn(xin)))
+                xin = xin';
+            end
+            
             obj.x_corr = xin;
             obj.x_next = xin;
         end
-        % Compute the integration operation according to a specific method
-        % input:
-        % u         - input value
-        % method    - integration method
-        % output:
-        % y     - integrator output value
+
         function y = integrate(obj, u, method)
+            % Compute the integration operation according to a specific method
+            % input:
+            % u         - input value
+            % method    - integration method
+            % output:
+            % y     - integrator output value
             
             if(nargin < 3)
                 method = 'Forward';
+            end
+            
+            if(not(iscolumn(u)))
+                u = u';
             end
             
             % integration

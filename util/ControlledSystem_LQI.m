@@ -17,7 +17,7 @@ classdef ControlledSystem_LQI < handle
         xc % simulation controller-states array
         r % simulation references array
         xci % controller initial conditions
-        int
+        int % Discrete integrator for error integration or accumulation
     end
     
     
@@ -49,7 +49,7 @@ classdef ControlledSystem_LQI < handle
             N = ceil(T/(obj.Tc)); % simulation steps number
             e = obj.xci; % initial error value
 
-            obj.int.setinstate(e);
+            obj.int.setinstate(e); % update integrator states
             nt = length(obj.sys.t); % length of last simulation
             %nx = size(obj.sys.A,1);
             nx = obj.sys.nx;
@@ -60,8 +60,7 @@ classdef ControlledSystem_LQI < handle
                 
                 obj.r = [obj.r r.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];
                 obj.xc = [obj.xc e.*ones(size(obj.G,2),(length(obj.sys.t)-nt))];
-                  e = obj.int.integrate((r - obj.Cy*obj.sys.xi),'forward');
-%                e = e + (r - obj.Cy*obj.sys.xi); % update incremental errors
+                e = obj.int.integrate((r - obj.Cy*obj.sys.xi),'forward'); % update incremental errors
                 nt = length(obj.sys.t); % update length of simulation vectors
             end
             obj.xci = e; % update controller states
