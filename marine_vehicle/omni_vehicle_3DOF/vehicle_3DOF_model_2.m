@@ -57,7 +57,7 @@ Aaug=[A     zeros(6, 3);
 Baug=[B;zeros(3,3)];
 Caug=[Cy,zeros(3,3)];
 % 
-Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(3,3)),1, pi/10,1.5, 0, 'sedumi');
+Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(3,3)),1, pi/10,1.5, 0);
 %Fa = dlqr(Aa,Ba,Q,R);
 F = Fa(:,1:end-3);
 f = Fa(:,6+1:end);

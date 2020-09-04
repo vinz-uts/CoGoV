@@ -15,7 +15,7 @@ close all;
 %10 Circular 1 2 crossed
 %11 Circular 1 2 3 crossed
 
-plot1 = 3;
+plot1 = 11;
 
 if(plot1 == 1)
     load('pool_nocomunication');

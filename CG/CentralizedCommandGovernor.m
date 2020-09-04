@@ -38,24 +38,39 @@ classdef CentralizedCommandGovernor < CommandGovernor
                     cnstr = [cnstr sum(d(((i-1)*4+1):((i-1)*4+4))) <= 3];
                 end
                 xk = x;
-                for k = 1:obj.k0
+                if((size(obj.U,1)/4)==1)
+                    for k = 1:obj.k0
+                        xk = obj.Phi*xk+obj.G*w;
+                        cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
+                        cnstr = [cnstr (obj.U(1,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+1)];
+                        cnstr = [cnstr (obj.U(2,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+2)];
+                        cnstr = [cnstr (obj.U(3,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+3)];
+                        cnstr = [cnstr (obj.U(4,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+4)];
+                        cnstr = [cnstr sum(b(((k-1)*4+1):((k-1)*4+4))) <= 3];       
+%                         ((k-1)*4+1):((k-1)*4+4)
+                    end
+                    
+               else
+                   for k = 1:obj.k0
                     xk = obj.Phi*xk+obj.G*w;
                     cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
                     for i=1:(size(obj.U,1)/4)
-                        cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+1)];
-                        cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+2)];
-                        cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+3)];
-                        cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(i-1)*4+4)];
-                        cnstr = [cnstr sum(b(((k-1)*4+(i-1)*4+1):((k-1)*4+(i-1)*4+4))) <= 3];
+                        cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(k+i-2)*4+1)];
+                        cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(k+i-2)*4+2)];
+                        cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(k+i-2)*4+3)];
+                        cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi-mu*b((k-1)*4+(k+i-2)*4+4)];
+                        cnstr = [cnstr sum(b(((k-1)*4+(k+i-2)*4+1):((k-1)*4+(k+i-2)*4+4))) <= 3];
+%                         ((k-1)*4+(k+i-2)*4+1):((k-1)*4+(k+i-2)*4+4)
                     end
                 end
+               end
                 
                 % Objective function
                 obj_fun = (r-w)'*obj.Psi*(r-w);
                 % Solver options
-                %assign(w, r*100);
+                assign(w, r*100);
                 
-                options = sdpsettings('verbose',0,'solver','bmibnb');%,'usex0',1);
+                options = sdpsettings('verbose',0,'solver','gurobi','usex0',1);
 
                 ris = solvesdp(cnstr,obj_fun,options);
                 g = double(w);

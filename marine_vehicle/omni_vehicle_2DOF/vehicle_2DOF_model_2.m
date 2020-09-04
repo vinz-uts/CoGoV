@@ -14,7 +14,7 @@
 
 %% Model parameters
 m = 10; % mass - [Kg]
-c = 1;  % friction coefficient - [-]
+c = 1;  % friction coefficient - [-] 
 
 %% Time continuous model
 A = [ 0    0    1    0  ;
@@ -72,7 +72,7 @@ Aaug=[A zer zer;-Cy [0;0] [0;0]];
 Baug=[B;zeros(2,2)];
 Caug=[Cy,zeros(2,2)];
 % 
-Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(2,2)),1, pi/10,1.5, 0, 'sedumi');
+Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(2,2)),1, pi/10,1.5, 0);
 %Fa = dlqr(Aa,Ba,Q,R);
 F = Fa(:,1:end-2);
 f = Fa(:,4+1:end);
