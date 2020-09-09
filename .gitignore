@@ -1,6 +1,9 @@
 
 #tbxmanager/
+#test_case/
+
 slprj/
+
 
 *.m~
 *.autosave

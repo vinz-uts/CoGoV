@@ -1,5 +1,5 @@
 %% Configure vehicle swarm
-vehicle_2DOF_cooperation
+vehicle_2DOF_cooperation_centralized
 
 %% Color the net
 colors = [0,1];
@@ -14,41 +14,37 @@ r{1} = [4,0.5]'; % position references
 r{2} = [3,1]'; % position references
 r{3} = [3,-1.5]'; % position references
 NT = ceil(Tf/Tc_cg); % simulation steps number
+nr = size(r{1},1); % size of single vehicle reference
 
 cputime =[];
 yalmiptime = [];
 
 round = 1;
 for t=1:NT 
+  xa = [];
     for i=1:N
-        if vehicle{i}.color == colors(round)
-            x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
-            xc = vehicle{i}.ctrl_sys.xci; % controller current state
-            xa = [x;xc];
-            g_n = [];
-            for j=1:N
-                if adj_matrix(i,j) == 1 % i,j is neighbour
-                    g_n = [g_n;vehicle{j}.g];
-                    x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
-                    xc = vehicle{j}.ctrl_sys.xci; % controller current state
-                    xa = [xa;x;xc];
-                end
-            end
-        
-            [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
-            
-            if ~isempty(g)
-                vehicle{i}.g = g;
-                cputime= [cputime,s.solvertime];
-                yalmiptime=[yalmiptime,s.yalmiptime];
-            else
-                disp('WARN: old references');
-                t,i
-            end
+        x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
+        xc = vehicle{i}.ctrl_sys.xci; % controller current state
+        xa = [xa;x;xc];
+
+        r_ = [];
+        for j=1:N
+            r_ = [r_;r{j}];
         end
+        
     end
+    g = cg.compute_cmd(xa,r_);
+    if ~isempty(g)
+        for i=1:N
+            vehicle{i}.g = g(((i-1)*nr)+1:((i-1)*nr)+nr);
+        end
+    else
+        disp('WARN: old references');
+        t,i
+    end
+    
     for i=1:N
-        vehicle{i}.ctrl_sys.sim(r{i},Tc_cg);
+        vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
 end

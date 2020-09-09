@@ -26,11 +26,11 @@ classdef CommandGovernor
             obj.T = T;
             obj.gi = gi;
             obj.Psi = Psi;
-            obj.k0 = k0;    
+            obj.k0 = k0;
         end
         
         
-        function g = compute_cmd(obj,x,r)
+        function [g, ris] = compute_cmd(obj,x,r)
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % conditions x.
@@ -38,24 +38,33 @@ classdef CommandGovernor
                 w = sdpvar(length(r),1);
                 cnstr = obj.T*(obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w <= obj.gi;
                 xk = x;
-
+                
                 for k = 1:obj.k0
                     xk = obj.Phi*xk+obj.G*w;
                     cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
                 end
-
+                
                 % Objective function
                 obj_fun = (r-w)'*obj.Psi*(r-w);
                 % Solver options
-                options = sdpsettings('verbose',0,'solver','sedumi');
-
-                solvesdp(cnstr,obj_fun,options);
+                options = sdpsettings('verbose',0,'solver','bmibnb');
+                
+                ris = solvesdp(cnstr,obj_fun,options);
                 g = double(w);
+                
+                if(ris.problem ~= 0)
+                    fprintf(...
+                        "WARNING! Problem %d visit \n https://www.gurobi.com/documentation/9.0/refman/optimization_status_codes.html \n %s\n", ris.problem, ris.info...
+                        );
+                    g = [];
+                end
+                
             catch Exc
-                disp('WARN: infeasible');
+                warning('Exception thrown during optimization: \n info: %s \n', getReport(Exc));
+                ris = [];
                 g = [];
             end
-        end  
+        end
     end
 end
 

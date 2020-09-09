@@ -46,13 +46,13 @@ vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 %% Discrete circle trajectory
 C = [0,0]; % circle center
 rho = 5; % circle radius - [m]
-Ns = 20; % trajectory discretization steps
+Ns = 200; % trajectory discretization steps
 th = 0:(2*pi/Ns):2*pi;
 r = [C(1)+rho.*cos(th) ; C(2)+rho.*sin(th)]; % references
 delta = 0.1; % reference tollerance
 
 %% Simulation
-Tf = 25; % simulation time
+Tf = 50; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
 N = ceil(Tf/Tc_cg); % simulation steps number
 k = 1; % actual reference

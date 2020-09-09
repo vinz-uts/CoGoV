@@ -3,10 +3,10 @@ clear all;
 close all;
 
 %% Load Pre-controlled vehicle system
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+% addpath('../../marine_vehicle');        addpath(genpath('../../util'));
+% addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
-vehicle_3DOF_model % WARN: Select the correct constraints matrix Hc, L.
+vehicle_3DOF_model_2 % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle.init_position(0,0,-pi); % set vehicle's initial position
 
@@ -50,9 +50,9 @@ vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 
 %% Simulation
-Tf = 10; % simulation time
+Tf = 5; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
-r = [-2,-3,-pi/2]'; % position references
+r = [1,0,-pi]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
 epsilon = 0.01; % nearness precision
 
@@ -60,9 +60,9 @@ for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
-    if norm([r(1)-x(1) r(2)-x(2)]) > epsilon
-        r = [r(1),r(2),atan2(r(2)-x(2),r(1)-x(1))]';
-    end
+%     if norm([r(1)-x(1) r(2)-x(2)]) > epsilon
+%         r = [r(1),r(2),atan2(r(2)-x(2),r(1)-x(1))]';
+%     end
     g = vehicle.cg.compute_cmd(xa,r);
     vehicle.ctrl_sys.sim(g,Tc_cg);
 end
