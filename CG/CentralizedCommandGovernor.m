@@ -57,7 +57,7 @@ classdef CentralizedCommandGovernor < CommandGovernor
                 % Solver options
                 assign(w, r*100);
                 
-                options = sdpsettings('verbose',0,'solver','bmibnb','usex0',1);
+                options = sdpsettings('verbose',0,'solver',obj.solvername,'usex0',1);
 
                 ris = solvesdp(cnstr,obj_fun,options);
                 g = double(w);

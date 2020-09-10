@@ -58,7 +58,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 
                 % Solver options
                 assign(g, r);
-                options = sdpsettings('verbose',0,'solver','bmibnb','usex0',1,'cachesolvers',1);
+                options = sdpsettings('verbose',0,'solver',obj.solvername,'usex0',1,'cachesolvers',1);
            
                 ris = optimize(cnstr,obj_fun,options);                   
                 g = double(g);

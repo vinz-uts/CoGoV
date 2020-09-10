@@ -12,6 +12,7 @@ classdef CommandGovernor
         gi % constraints vector
         Psi % reference weight Ψ matrix
         k0 % prediction steps number
+        solvername % name of the numerical solver 
     end
     
     
@@ -27,6 +28,7 @@ classdef CommandGovernor
             obj.gi = gi;
             obj.Psi = Psi;
             obj.k0 = k0;
+            obj.solvername = check_solver(); % check for 'gurobi' solver
         end
         
         
@@ -47,7 +49,7 @@ classdef CommandGovernor
                 % Objective function
                 obj_fun = (r-w)'*obj.Psi*(r-w);
                 % Solver options
-                options = sdpsettings('verbose',0,'solver','bmibnb');
+                options = sdpsettings('verbose',0,'solver',obj.solvername);
                 
                 ris = solvesdp(cnstr,obj_fun,options);
                 g = double(w);
