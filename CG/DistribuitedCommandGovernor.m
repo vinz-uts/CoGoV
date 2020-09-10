@@ -27,7 +27,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             try
                 g = sdpvar(length(r),1);
                 w = [g;g_n];
-                b = binvar((size(obj.U,1)/4)*(obj.k0)*4,1);
+                b = binvar(size(obj.U,1)*obj.k0,1);
                 d = binvar(size(obj.U,1),1);
                 mu = 10000;
                 cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
@@ -36,8 +36,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+2)-mu*d((i-1)*4+2)];
                     cnstr = [cnstr obj.U((i-1)*4+3,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+3)-mu*d((i-1)*4+3)];
                     cnstr = [cnstr obj.U((i-1)*4+4,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+4)-mu*d((i-1)*4+4)];
-                    cnstr = [cnstr sum(d(((i-1)*4+1):((i-1)*4+4))) <= 3];
-                    %cnstr = [cnstr 3.5 <= 3];
+                    cnstr = [cnstr sum( d((i-1)*4+(1:4)) ) <= 3];
                 end
                 xk = x;
                 
@@ -50,36 +49,19 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                         cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2)];
                         cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3)];
                         cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4)];
-                        cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+1:(k-1)*size(obj.U,1)+(i-1)*4+4)) <= 3];
-                        (k-1)*size(obj.U,1)+(i-1)*4+1:(k-1)*size(obj.U,1)+(i-1)*4+4
-                        %                          ((k-1)*4+(k+i-2)*4+1):((k-1)*4+(k+i-2)*4+4)
+                        cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+(1:4)) )<= 3];
                     end
                 end
-                
-                
-               
-                
-%                 (k-1)*size(obj.U)+(i-1)*4+[1:4]
-
- 
- 
                 
                 % Objective function
                 obj_fun = (r-g)'*obj.Psi*(r-g);
                 
                 % Solver options
                 assign(g, r);
-                
-                options = sdpsettings('verbose',0,'solver','gurobi','usex0',1,'cachesolvers',1);
-                
+                options = sdpsettings('verbose',0,'solver','bmibnb','usex0',1,'cachesolvers',1);
            
-                ris = optimize(cnstr,obj_fun,options);
-                
-                   
-                
+                ris = optimize(cnstr,obj_fun,options);                   
                 g = double(g);
-                
-                clear('yalmip'); 
                 
                 if(ris.problem ~= 0)
                    fprintf(...
@@ -87,13 +69,12 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                    );
                     g = [];      
                 end
-                
-                      
             catch Exc
                 warning('Exception thrown during optimization: \n info: %s \n', getReport(Exc));
                 ris = [];
                 g = [];
             end
+            clear('yalmip');
         end    
     end
 end

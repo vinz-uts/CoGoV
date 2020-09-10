@@ -35,8 +35,7 @@ classdef CentralizedCommandGovernor < CommandGovernor
                     cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+2)-mu*d((i-1)*4+2)];
                     cnstr = [cnstr obj.U((i-1)*4+3,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+3)-mu*d((i-1)*4+3)];
                     cnstr = [cnstr obj.U((i-1)*4+4,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+4)-mu*d((i-1)*4+4)];
-                    cnstr = [cnstr sum(d(((i-1)*4+1):((i-1)*4+4))) <= 3];
-                    %cnstr = [cnstr 3.5 <= 3];
+                    cnstr = [cnstr sum( d((i-1)*4+(1:4)) ) <= 3];
                 end
                 xk = x;
                 
@@ -49,9 +48,7 @@ classdef CentralizedCommandGovernor < CommandGovernor
                         cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2)];
                         cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3)];
                         cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4)];
-                        cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+1:(k-1)*size(obj.U,1)+(i-1)*4+4)) <= 3];
-                        (k-1)*size(obj.U,1)+(i-1)*4+1:(k-1)*size(obj.U,1)+(i-1)*4+4
-                        %                          ((k-1)*4+(k+i-2)*4+1):((k-1)*4+(k+i-2)*4+4)
+                        cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+(1:4)) ) <= 3];
                     end
                 end
                 
@@ -60,7 +57,7 @@ classdef CentralizedCommandGovernor < CommandGovernor
                 % Solver options
                 assign(w, r*100);
                 
-                options = sdpsettings('verbose',0,'solver','gurobi','usex0',1);
+                options = sdpsettings('verbose',0,'solver','bmibnb','usex0',1);
 
                 ris = solvesdp(cnstr,obj_fun,options);
                 g = double(w);

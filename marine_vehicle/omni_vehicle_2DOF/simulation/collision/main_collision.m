@@ -8,8 +8,8 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+addpath(genpath('../../../../marine_vehicle'));        addpath(genpath('../../../../util'));
+addpath(genpath('../../../../tbxmanager'));   addpath('../../../../CG');
 
 vehicle_2DOF_model_2
 
@@ -255,7 +255,7 @@ for t=1:NT
     end
     
     drawnow;
-    dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+    dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
 end
 
 

@@ -8,8 +8,8 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices
-addpath('../../marine_vehicle');        addpath(genpath('../../util'));
-addpath(genpath('../../tbxmanager'));   addpath('../../CG');
+addpath('../../../../marine_vehicle');        addpath(genpath('../../../../util'));
+addpath(genpath('../../../../tbxmanager'));   addpath('../../../../CG');
 
 vehicle_2DOF_model_2
 
@@ -27,7 +27,7 @@ vehicle{2}.init_position(0,1);
 %% Net configuration
 %  1-2
 adj_matrix = [-1  1 ;
-    1 -1 ];
+               1 -1 ];
 
 
 %% Vehicles constraints
@@ -45,20 +45,15 @@ T_max = 20; % max abs of motor thrust - [N]
 %% Command Governor parameters
 % Vehicle's references weight matrix
 Psi = [ 1  0 ;
-    0  1  ];
-Psitot=[];
+        0  1  ];
+Psi_ = repmat({Psi},1,N);   Psi = blkdiag(Psi_{:});
 
-for i=1:N
-    Psitot= blkdiag(Psitot,Psi);
-end
-
-Psi = Psitot;
 k0 = 10; % prediction horizon
 %% Augmented System construction
 % Augmented neighbour matrix
-% | ?(1)           |
-% |      ?(i)      |
-% |           ?(N) |
+% | Φ(1)           |
+% |      Φ(i)      |
+% |           Φ(N) |
 Phi = [];    G = [];    Hc = [];    L = [];
 %Phi = vehicle{1}.ctrl_sys.Phi;
 %G = vehicle{1}.ctrl_sys.G;
@@ -82,7 +77,7 @@ nca = nc*N; % augmented-c dimension
 for i=1:N
     for j=i+1:N
         if adj_matrix(i,j) == 1 % i,j are neighbours
-			% Split ||.||?
+			% Split ||.||∞
 			cnstr = zeros(4,nca);
             % split modules x constraints
             % |     -- i --       -- j --     |
@@ -102,7 +97,7 @@ for i=1:N
             cnstr(4,((j-1)*nc)+2) = 1;
             
             % Matrix for neighbour remoteness constraints
-            % T*c ? gi
+            % T*c ≤ gi
             if ~isempty(T)
                 T = [T;cnstr];
                 gi = [gi;[d_max,d_max,d_max,d_max]'];
@@ -112,7 +107,7 @@ for i=1:N
             end
             
             % Matrix for neighbour proximity constraints
-            % U*c ? hi (row-by-row OR-ed constrains)
+            % U*c ≤ hi (row-by-row OR-ed constrains)
             if ~isempty(U)
                 U = [U;cnstr];
                 hi = [hi;[d_min,d_min,d_min,d_min]'];
@@ -125,16 +120,16 @@ for i=1:N
 end
     
 % Speed and thrust constraints
-% T_*c_ ? gi_       single vehicle constraints
-%      x  y  ? Vx Vy V? Tx Ty T?
+% T_*c_ ≤ gi_       single vehicle constraints
+%          x  y Vx Vy Tx Ty 
     T_ = [ 1  0  0  0  0  0 ;
-        -1 0  0  0  0  0 ;
-        0  1  0  0  0  0 ;
-        0 -1  0  0  0  0 ;
-        0  0  0  0  1  0 ;
-        0  0  0  0 -1  0 ;
-        0  0  0  0  0  1 ;
-        0  0  0  0  0 -1 ];
+          -1  0  0  0  0  0 ;
+	       0  1  0  0  0  0 ;
+	       0 -1  0  0  0  0 ;
+	       0  0  0  0  1  0 ;
+	       0  0  0  0 -1  0 ;
+	       0  0  0  0  0  1 ;
+	       0  0  0  0  0 -1 ];
     gi_ = [Max_x,Max_x,Max_y,Max_y,T_max,T_max,T_max,T_max]';
     
 Ta = [];    ga = [];
@@ -160,8 +155,6 @@ vehicle{2}.color = colors(2);
 Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
-
-
 
 figure(1);
 hold on;
@@ -255,7 +248,7 @@ for t=1:NT
     end
     
     drawnow;
-    dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+    dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
 end
 
 
