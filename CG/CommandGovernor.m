@@ -1,4 +1,4 @@
-classdef CommandGovernor
+classdef CommandGovernor < handle
     %% COMMAND GOVERNOR
     %  Command Governor computes the nearest reference g to r that statify
     %  the constrains.
@@ -12,12 +12,16 @@ classdef CommandGovernor
         gi % constraints vector
         Psi % reference weight Ψ matrix
         k0 % prediction steps number
-        solvername % name of the numerical solver
+        solver_name % name of the numerical solver
+    end
+    
+    properties (Constant)
+        default_solver = 'bmibnb';
     end
     
     
     methods
-        function obj = CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0)
+        function obj = CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0,solver)
             % CommandGovernor - Constructor
             % Create an instance of a Command Governor
             obj.Phi = Phi;
@@ -28,7 +32,11 @@ classdef CommandGovernor
             obj.gi = gi;
             obj.Psi = Psi;
             obj.k0 = k0;
-            obj.solvername = check_solver(); % check for 'gurobi' solver
+            if nargin > 8
+                obj.solver_name = obj.check_solver(solver);
+            else
+                obj.solver_name = obj.default_solver;
+            end
         end
         
         
@@ -48,7 +56,7 @@ classdef CommandGovernor
             % Objective function
             obj_fun = (r-w)'*obj.Psi*(r-w);
             % Solver options
-            options = sdpsettings('verbose',0,'solver',obj.solvername);
+            options = sdpsettings('verbose',0,'solver',obj.solver_name);
             
             ris = solvesdp(cnstr,obj_fun,options);
             g = double(w);
@@ -63,5 +71,25 @@ classdef CommandGovernor
             clear('yalmip');
         end
     end
+    
+    methods (Access = protected)
+        function check_solver(obj, solver_name)
+            % check_solver - check if solver is available 
+            % If not present, default solver is setted 
+
+            obj.solver_name = obj.default_solver;
+
+            [solvers,found] = getavailablesolvers(0);
+
+            for i = 1:length(solvers)
+                if (strcmpi(solvers(i).tag,solver_name)==1 && found(i))
+                    obj.solver_name = solver_name;
+                    break
+                end
+            end
+            fprintf("Solver setted: %s\n",obj.solver_name);
+        end % check_solver
+    end % private methods
+    
 end
 

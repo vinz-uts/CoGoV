@@ -138,7 +138,7 @@ for i=1:N
     end
     T = [Ta;T];     gi = [ga;gi];
     
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end
 
 

@@ -139,7 +139,7 @@ for j=1:N
 end
 T = [Ta;T];     gi = [ga;gi];
 
-cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0);
+cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
 
 %% Planner

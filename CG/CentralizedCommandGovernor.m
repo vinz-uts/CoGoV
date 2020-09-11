@@ -11,10 +11,13 @@ classdef CentralizedCommandGovernor < CommandGovernor
     
     
     methods
-        function obj = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0)
+        function obj = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,solver)
             % CentralizedCommandGovernor - Constructor
             % Create an instance of a Centralized Command Governor.
             obj = obj@CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0);
+            if nargin > 10 
+                obj.check_solver(solver);
+            end
             obj.U = U;
             obj.hi = hi;
         end
@@ -56,15 +59,13 @@ classdef CentralizedCommandGovernor < CommandGovernor
             % Solver options
             assign(w, r);  % initial guessing (possible optimization speed up)
             
-            options = sdpsettings('verbose',0,'solver',obj.solvername,'usex0',1);
+            options = sdpsettings('verbose',0,'solver',obj.solver_name,'usex0',1);
             
             ris = solvesdp(cnstr,obj_fun,options);
             g = double(w);
             
             if(ris.problem ~= 0)
-                fprintf(...
-                    "WARNING! Problem %d visit \n https://www.gurobi.com/documentation/9.0/refman/optimization_status_codes.html \n %s\n", ris.problem, ris.info...
-                    );
+                fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
                 g = [];
             end
             
