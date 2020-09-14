@@ -13,6 +13,8 @@ classdef CommandGovernor < handle
         Psi % reference weight Ψ matrix
         k0 % prediction steps number
         solver_name % name of the numerical solver
+        Rk % Rk matrix for code speed up
+        bk % bk matrix for code speed up
     end
     
     properties (Constant)
@@ -37,6 +39,8 @@ classdef CommandGovernor < handle
             else
                 obj.solver_name = obj.default_solver;
             end
+            
+            [obj.Rk, obj.bk] = obj.compute_matrix();
         end
         
         
@@ -89,7 +93,34 @@ classdef CommandGovernor < handle
             end
             fprintf("Solver setted: %s\n",obj.solver_name);
         end % check_solver
-    end % private methods
-    
+        
+        function [Rk, bk] = compute_matrix(obj)
+            % code optimization
+            % computation of matrices for direct state evolution
+            % output:
+            % - Rk : is a three-dimensional matrix in which every 'slice' is
+            %           related to a k-prediction.
+            %           Rk(:, :, k) is multiplied by w
+            % - bk : is a three-dimensional matrix in which every 'slice' is
+            %           related to a k-prediction.
+            %           this term (premultiplied by x0) has to be substructed
+            %           to the known term
+            
+            % preallocation for code speed up
+            bk = zeros(length(obj.Hc(:, 1)), length(obj.Phi(1, :)), obj.k0);
+            [m, n] = size(obj.L);
+            Rk = zeros(m, n, obj.k0);
+            
+            for k = 1:obj.k0 % for each prediction compute a Rk, bk
+                bk(:, :, k) = (obj.Hc*(obj.Phi^k));
+                
+                Rk_temp = zeros(length(obj.Phi), length(obj.G(1, :)));
+                for j = 0:k-1
+                    Rk_temp = Rk_temp + (obj.Phi^j)*obj.G;
+                end
+                Rk(:, :, k) = obj.Hc*Rk_temp + obj.L;
+            end
+        end % private methods
+    end  
 end
 
