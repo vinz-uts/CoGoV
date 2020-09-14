@@ -1,4 +1,4 @@
-classdef CircularPlanner
+classdef CircularPlanner < handle
     %% CircularPlanner
     % Concrete class used to compute references in order to follow 
     % a circular trajectory
@@ -20,7 +20,7 @@ classdef CircularPlanner
         % input:
         % center    - center of the trajectory
         % radius    - radius of the trajectory
-        % nspep     - sampling step
+        % nstep     - sampling step
         % clockwise - if 1 the trajectory is traveled clockwise, otherwise counterclockwise
         %             (optional)
         % output: 
@@ -47,7 +47,7 @@ classdef CircularPlanner
         % output:
         % r     - new reference
         % obj   - modified CircularPlanner instance
-        function [r, obj] = compute_reference(obj, sys)
+        function [r, theta] = compute_reference(obj, sys)
             r = [obj.x(obj.counter), obj.y(obj.counter)]';
             
             % If the simulation has just started, the initial state is used
@@ -69,8 +69,10 @@ classdef CircularPlanner
                 
                 % reference extraction
                 r = [obj.x(obj.counter), obj.y(obj.counter)]'; 
-
+                
             end
+%             theta = obj.counter*obj.nstep; 
+            theta = atan2(r(2)-p(2),r(1)-p(1));
 
         end
     end

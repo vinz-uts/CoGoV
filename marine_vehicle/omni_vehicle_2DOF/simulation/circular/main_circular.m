@@ -11,6 +11,13 @@ vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
 
 % vehicle_2DOF_model % LQI controller (discrete time design)
 
+%%%%%%% Position and input constraints
+Hc = [ eye(2)        zeros(2,4)      ;
+        -F              f            ];  
+L = zeros(4,2);
+
+%%%%%%
+
 %% Vehicles
 N = 3; % number of vehicles
 
@@ -24,21 +31,7 @@ vehicle{2}.init_position(1.5,0.75);
 vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle{3}.init_position(0.5,0);
 
-%%%%%%% Position and input constraints
-Hc = [ eye(2)        zeros(2,4)      ;
-        -F              f            ];  
-L = zeros(4,2);
 
-
-vehicle{1}.ctrl_sys.Hc = Hc;
-vehicle{1}.ctrl_sys.L = L;
-
-vehicle{2}.ctrl_sys.Hc = Hc;
-vehicle{2}.ctrl_sys.L = L;
-
-vehicle{3}.ctrl_sys.Hc = Hc;
-vehicle{3}.ctrl_sys.L = L;
-%%%%%%
 
 
 %% Net configuration
@@ -202,7 +195,7 @@ for t=1:NT
             
             
             plan = pl(i);
-            [r{i}, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            r{i}= plan.compute_reference(vehicle{i}.ctrl_sys.sys);
             g = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
             
             if ~isempty(g)

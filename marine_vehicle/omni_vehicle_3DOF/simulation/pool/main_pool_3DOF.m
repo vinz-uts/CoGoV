@@ -213,7 +213,7 @@ for t=1:NT
             
             
             
-            [r, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            [r, theta] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
            
             
             if(i==3 && blockedd)
@@ -221,7 +221,7 @@ for t=1:NT
             end
             
             
-            g = vehicle{i}.cg.compute_cmd(xa, [r;0], g_n);
+            g = vehicle{i}.cg.compute_cmd(xa, [r;theta], g_n);
             
             if ~isempty(g)
                 vehicle{i}.g = g;

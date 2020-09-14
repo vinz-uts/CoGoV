@@ -1,4 +1,4 @@
-classdef BorderPlanner
+classdef BorderPlanner < handle
     %% BORDER PLANNER 2
     % Concrete class used to compute references in a pool. When hitting the
     % boundaries of the pool, the new vehicle's trajectory starts with the
@@ -55,7 +55,7 @@ classdef BorderPlanner
         % sys   - veichel model
         % output:
         % r     - new reference
-        function [r, obj] = compute_reference(obj, sys)
+        function [r, theta] = compute_reference(obj, sys)
             
             % If the simulation has just started, the initial state is used
             if(isempty(sys.x))
@@ -67,11 +67,13 @@ classdef BorderPlanner
             % The reference is not updated if the current one has not been reached
             if(not(isempty(obj.r_old)) && norm(p - obj.r_old) > obj.tol)
                 r = obj.r_old;
+                theta = atan2(r(2)-p(2),r(1)-p(1));
                 return;
             end
             
             % Initialize the previous reference if necessary
             if(isempty(obj.r_old))
+                
                 obj.r_old = p;
             end
             
@@ -122,6 +124,7 @@ classdef BorderPlanner
             
             % save the reference
             obj.r_old = r;
+            theta = atan2(r(2)-p(2),r(1)-p(1));
             
             
         end

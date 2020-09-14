@@ -157,12 +157,12 @@ cputime =[];
 yalmiptime = [];
 
 %%%%%%%%%% Crossed Collision References
-r{1}= [1,1.5]';
-r{2}= [1.5,1]';
+% r{1}= [1,1.5]';
+% r{2}= [1.5,1]';
 
 %%%%%%%%%% Frontal Collision References
-% r{1}= vehicle{2}.ctrl_sys.sys.xi(1:2);
-% r{2}= vehicle{1}.ctrl_sys.sys.xi(1:2);
+r{1}= vehicle{2}.ctrl_sys.sys.xi(1:2);
+r{2}= vehicle{1}.ctrl_sys.sys.xi(1:2);
 
 nr = size(r{1},1); % size of single vehicle reference
 

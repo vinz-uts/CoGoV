@@ -207,7 +207,7 @@ for t=1:NT
     for i=1:N
         plan = pl(i);
         
-        [r{i}, pl(i)] = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+        r{i} = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
         
         if(i==3 && blockedd)
             r{3}=reference3(1:2);
