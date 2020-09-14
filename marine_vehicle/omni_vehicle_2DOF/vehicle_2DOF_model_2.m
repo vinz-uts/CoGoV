@@ -45,7 +45,7 @@ Caug=[Cy,zeros(2,2)];
 
 %% Compute control law with R-stability design 
 
-Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(2,2)),1, pi/10,1.5, 0,'sedumi');
+Fa = compute_Rstab_gain(ss(Aaug,Baug,Caug,zeros(2,2)),1, pi/10,1.5, 0);
 
 % Extracting feedback gain and feedforward gain from previous output 
 F = Fa(:,1:end-2);

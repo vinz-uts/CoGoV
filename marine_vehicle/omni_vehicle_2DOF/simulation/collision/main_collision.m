@@ -161,9 +161,6 @@ Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 round = 1;
-figure(1);  hold on;
-axis([-3,3,-3,3]);  axis('equal');
-
 
 %%%%% Data collection about optimization time %%%%%%%%
 % names are self-explanatory
@@ -174,13 +171,13 @@ dist = []; %%% check for collition constraints
 
 %%%%%%%%%% Crossed Collision References
 % Uncomment to test
-r{1} = [1,1.5]';
-r{2} = [1.5,1]';
+% r{1} = [1,1.5]';
+% r{2} = [1.5,1]';
 
 %%%%%%%%%% Frontal Collision References
 % Uncomment to test
-% r{1} = vehicle{2}.ctrl_sys.sys.xi(1:2);
-% r{2} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+r{1} = vehicle{2}.ctrl_sys.sys.xi(1:2);
+r{2} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 
 for t=1:NT
     for i=1:N

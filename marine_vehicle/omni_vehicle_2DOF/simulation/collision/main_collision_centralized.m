@@ -180,14 +180,20 @@ for t=1:NT
         
     end
     [g,s] = cg.compute_cmd(xa,r_);
-    %%%%%%%% Desired reference plotting 
-    plot(r{1}(1), r{1}(2), 'bo');
-    plot(r{2}(1), r{2}(2), 'go');
-    
+    %%%%%%%% to check incorrect zero reference computed by CG
+    if(i==1)
+        plot(r{1}(1), r{1}(2), 'bo');
+        if(not(isempty(g)))
+            plot(g(1), g(2), 'rx');
+        end
+    end
+    if(i==2)
+        plot(r{2}(1), r{2}(2), 'go');
+        if(not(isempty(g)))
+            plot(g(1), g(2), 'bx');
+        end
+    end
     if ~isempty(g)
-        %%%% Plot CG reference 
-        plot(g(1), g(2), 'b*');
-        plot(g(3), g(4), 'gx');
         cputime= [cputime,s.solvertime];
         yalmiptime=[yalmiptime,s.yalmiptime];
         for i=1:N
