@@ -16,6 +16,12 @@ vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
 
 % vehicle_2DOF_model % LQI controller (discrete time design)
 
+%%%%%%% Position and input constraints
+Hc = [ eye(2)        zeros(2,4)      ;
+        -F              f            ];  
+L = zeros(4,2);
+%%%%%%
+
 %% Vehicles
 N = 2; % number of vehicles
 
@@ -26,25 +32,15 @@ vehicle{1}.init_position(1,0);
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle{2}.init_position(0,1);
 
-%%%%%%% Position and input constraints
-Hc = [ eye(2)        zeros(2,4)      ;
-        -F              f            ];  
-L = zeros(4,2);
-
-
-vehicle{1}.ctrl_sys.Hc = Hc;
-vehicle{1}.ctrl_sys.L = L;
-
-vehicle{2}.ctrl_sys.Hc = Hc;
-vehicle{2}.ctrl_sys.L = L;
-%%%%%%
-
-
 %% Net configuration
 %  1-2
 adj_matrix = [-1  1 ;
                1 -1 ];
 
+%% Color the net
+colors = [0,1];
+vehicle{1}.color = colors(1);
+vehicle{2}.color = colors(2);
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
@@ -69,10 +65,6 @@ k0 = 10; % prediction horizon
 % |      Φ(i)      |
 % |           Φ(N) |
 Phi = [];    G = [];    Hc = [];    L = [];
-%Phi = vehicle{1}.ctrl_sys.Phi;
-%G = vehicle{1}.ctrl_sys.G;
-%Hc = vehicle{1}.ctrl_sys.Hc;
-%L = vehicle{1}.ctrl_sys.L;
 for i=1:N
     Phi = blkdiag(Phi,vehicle{i}.ctrl_sys.Phi);
 	G = blkdiag(G,vehicle{i}.ctrl_sys.G);
@@ -135,15 +127,12 @@ end
 
 % thrust constraints
 % T_*c_ ≤ gi_       single vehicle constraints
-%      x  y    Tx Ty
-T_ = [
-    0  0    1  0 ;
-    0  0   -1  0 ;
-    0  0    0  1 ;
-    0  0    0 -1 ];
+%      x  y  Tx Ty
+T_ = [ 0  0  1  0 ;
+       0  0 -1  0 ;
+       0  0  0  1 ;
+       0  0  0 -1 ];
 gi_ = [T_max,T_max,T_max,T_max]';
-
-
 
 Ta = [];    ga = [];
 for j=1:N
@@ -154,41 +143,28 @@ T = [Ta;T];     gi = [ga;gi];
 
 cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
-
-%% Color the net
-colors = [0,1];
-vehicle{1}.color = colors(1);
-vehicle{2}.color = colors(2);
-
-
 %% Simulation Colored Round CG
 Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-figure(1);
-hold on;
-axis([-3,3, -3,3]);
+figure(1);  hold on;
+axis([-3,3,-3,3]);  axis('equal');
 dist = [];
 round = 1;
+
 cputime =[];
 yalmiptime = [];
 
 %%%%%%%%%% Crossed Collision References
-
 r{1}= [1,1.5]';
 r{2}= [1.5,1]';
 
 %%%%%%%%%% Frontal Collision References
-
-% Uncomment to test
-% % 
 % r{1}= vehicle{2}.ctrl_sys.sys.xi(1:2);
 % r{2}= vehicle{1}.ctrl_sys.sys.xi(1:2);
 
-
 nr = size(r{1},1); % size of single vehicle reference
-
 
 for t=1:NT
     xa = [];
@@ -229,8 +205,7 @@ for t=1:NT
     end
     
     
-    for i=1:N
-        
+    for i=1:N        
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
@@ -258,9 +233,8 @@ for t=1:NT
 end
 
 
-figure;
+figure;     hold on;
 plot(1:NT, dist);
-hold on;
 plot(1:NT,0.3*ones(1,length(1:NT)));
 title('Distance between vehicles');
 xlabel('time [s]');
