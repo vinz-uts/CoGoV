@@ -150,13 +150,13 @@ T_ = [
 gi_ = [T_max,T_max,T_max,T_max]';
 
 
-
-Ta = [];    ga = [];
-for j=1:N
-    Ta = blkdiag(Ta,T_);
-    ga = [ga;gi_];
-end
-T = [Ta;T];     gi = [ga;gi];
+T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
+% Ta = [];    ga = [];
+% for j=1:N
+%     Ta = blkdiag(Ta,T_);
+%     ga = [ga;gi_];
+% end
+% T = [Ta;T];     gi = [ga;gi];
 
 cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
