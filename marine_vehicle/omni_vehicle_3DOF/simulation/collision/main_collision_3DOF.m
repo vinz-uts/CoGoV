@@ -136,11 +136,15 @@ for i=1:N
     gi_ = [T_max,T_max,T_max,T_max,T_max,T_max]';
     
     Ta = T_;    ga = gi_;
-    for j=1:k
-        Ta = blkdiag(Ta,T_);
-        ga = [ga;gi_];
-    end
-    T = [Ta;T];     gi = [ga;gi];
+    
+    T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
+    
+    
+%     for j=1:k
+%         Ta = blkdiag(Ta,T_);
+%         ga = [ga;gi_];
+%     end
+%     T = [Ta;T];     gi = [ga;gi];
 
     vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end

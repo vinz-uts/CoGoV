@@ -1,5 +1,3 @@
-clear;
-close all;
 %%
 % Simulation of a potential collision where vehicle 1 and vehicle 2 have to
 % swap their relative positions
@@ -14,14 +12,14 @@ addpath('../../../../marine_vehicle');        addpath(genpath('../../../../util'
 addpath(genpath('../../../../tbxmanager'));   addpath('../../../../CG');
 
 %% Comment/Uncomment to choose precompensation technique
-vehicle_3DOF_model_2 % R-stability controller (continuous time desing)
+vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
 
-% vehicle_3DOF_model % LQI controller (discrete time design)
+% vehicle_2DOF_model % LQI controller (discrete time design)
 
 %%%%%%% Position and input constraints
-Hc = [ eye(3)        zeros(3,6)      ;
+Hc = [ eye(2)        zeros(2,4)      ;
         -F              f            ];  
-L = zeros(6,3);
+L = zeros(4,2);
 %%%%%%
 
 %% Vehicles
@@ -29,17 +27,20 @@ N = 2; % number of vehicles
 
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(1,0,0);
+vehicle{1}.init_position(1,3.5);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(0,1,0);
-
+vehicle{2}.init_position(1,2.5);
 
 %% Net configuration
 %  1-2
 adj_matrix = [-1  1 ;
                1 -1 ];
 
+%% Color the net
+colors = [0,1];
+vehicle{1}.color = colors(1);
+vehicle{2}.color = colors(2);
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
@@ -48,13 +49,13 @@ adj_matrix = [-1  1 ;
 d_max = 200; % maximum distance between vehicles - [m]
 d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
-% Vehicles constraints
+% Vehicles input/speed constraints
 T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 % Vehicle's references weight matrix
-Psi = 1*eye(3); % vehicle's references weight matrix
-
+Psi = [ 1  0 ;
+        0  1  ];
 Psi_ = repmat({Psi},1,N);   Psi = blkdiag(Psi_{:});
 
 k0 = 10; % prediction horizon
@@ -64,10 +65,6 @@ k0 = 10; % prediction horizon
 % |      Φ(i)      |
 % |           Φ(N) |
 Phi = [];    G = [];    Hc = [];    L = [];
-%Phi = vehicle{1}.ctrl_sys.Phi;
-%G = vehicle{1}.ctrl_sys.G;
-%Hc = vehicle{1}.ctrl_sys.Hc;
-%L = vehicle{1}.ctrl_sys.L;
 for i=1:N
     Phi = blkdiag(Phi,vehicle{i}.ctrl_sys.Phi);
 	G = blkdiag(G,vehicle{i}.ctrl_sys.G);
@@ -128,20 +125,16 @@ for i=1:N
     end
 end
 
-% Speed and thrust constraints
+% thrust constraints
 % T_*c_ ≤ gi_       single vehicle constraints
-%          x  y Vx Vy Tx Ty
-T_ = [
-    0  0  0   1  0  0 ;
-    0  0  0  -1  0  0 ;
-    0  0  0   0  1  0 ;
-    0  0  0   0 -1  0 ;
-    0  0  0   0  0  1 ;
-    0  0  0   0  0 -1 ];
-gi_ = [T_max,T_max,T_max,T_max,T_max,T_max]';
+%      x  y  Tx Ty
+T_ = [ 0  0  1  0 ;
+       0  0 -1  0 ;
+       0  0  0  1 ;
+       0  0  0 -1 ];
+gi_ = [T_max,T_max,T_max,T_max]';
 
 T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
-% 
 % Ta = [];    ga = [];
 % for j=1:N
 %     Ta = blkdiag(Ta,T_);
@@ -149,48 +142,38 @@ T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
 % end
 % T = [Ta;T];     gi = [ga;gi];
 
-cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
-
-
-%% Color the net
-colors = [0,1];
-vehicle{1}.color = colors(1);
-vehicle{2}.color = colors(2);
-
+cg = CentralizedCommandGovernorCA(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
 %% Simulation Colored Round CG
-Tf = 10; % simulation time
+Tf = 15; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-figure(1);
-hold on;
-axis([-3, 3, -3,3]);
+figure(1);  hold on;
+axis([-3 11 -3 11]);  axis('equal');
 dist = [];
 round = 1;
+
 cputime =[];
 yalmiptime = [];
 
 %%%%%%%%%% Crossed Collision References
-% 
-% r{1}= [1,1.5,0]';
-% r{2}= [1.5,1,0]';
+r{1}= [7,3.5]';
+r{2}= [7,2.5]';
 
 %%%%%%%%%% Frontal Collision References
+% r{1}= vehicle{2}.ctrl_sys.sys.xi(1:2);
+% r{2}= vehicle{1}.ctrl_sys.sys.xi(1:2);
 
-% Uncomment to test
-
-ref1=vehicle{2}.ctrl_sys.sys.xi;
-ref2=vehicle{1}.ctrl_sys.sys.xi;
-
-r{1}= ref1(1:3);
-r{2}= ref2(1:3);
-
+ve1 = [3,2]';
+ve2 = [3,4]';
+ve3 = [5,2]';
+ve4 = [5,4]';
 
 nr = size(r{1},1); % size of single vehicle reference
 
-
-
+x_plot = 3:0.1:5;
+y_plot = 2:0.1:4;
 
 for t=1:NT
     xa = [];
@@ -205,21 +188,15 @@ for t=1:NT
         end
         
     end
-    [g,s] = cg.compute_cmd(xa,r_);
-    %%%%%%%% to check incorrect zero reference computed by CG
-    if(i==1)
-        plot(r{1}(1), r{1}(2), 'bo');
-        if(not(isempty(g)))
-            plot(g(1), g(2), 'rx');
-        end
-    end
-    if(i==2)
-        plot(r{2}(1), r{2}(2), 'go');
-        if(not(isempty(g)))
-            plot(g(1), g(2), 'bx');
-        end
-    end
+    [g,s] = cg.compute_cmd(xa,r_,ve1,ve2,ve3,ve4);
+     %%%%%%%% Desired reference plotting 
+    plot(r{1}(1), r{1}(2), 'bo');
+    plot(r{2}(1), r{2}(2), 'go');
+    
     if ~isempty(g)
+        %%%% Plot CG reference 
+        plot(g(1), g(2), 'b*');
+        plot(g(3), g(4), 'gx');
         cputime= [cputime,s.solvertime];
         yalmiptime=[yalmiptime,s.yalmiptime];
         for i=1:N
@@ -231,8 +208,7 @@ for t=1:NT
     end
     
     
-    for i=1:N
-        
+    for i=1:N        
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
@@ -242,14 +218,16 @@ for t=1:NT
         figure(1);
         hold on;
         if(k==1)
-            plot_trajectory(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),vehicle{1}.ctrl_sys.sys.x(3,:));
-            plot(vehicle{1}.ctrl_sys.sys.x(1,end),vehicle{1}.ctrl_sys.sys.x(2,end),'o');
+            plot(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),'b.');
         else
-            plot_trajectory(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),vehicle{2}.ctrl_sys.sys.x(3,:));
-            plot(vehicle{2}.ctrl_sys.sys.x(1,end),vehicle{2}.ctrl_sys.sys.x(2,end),'x');
+            plot(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),'g.');
         end
         
     end
+    plot(ones(size(y_plot))*x_plot(1), y_plot);
+    plot(x_plot, ones(size(x_plot))*y_plot(1));
+    plot(ones(size(y_plot))*x_plot(end), y_plot);
+    plot(x_plot, ones(size(x_plot))*y_plot(end));
     
     if(t==1)
         title('Frontal Collision Simulation');
@@ -262,9 +240,8 @@ for t=1:NT
 end
 
 
-figure;
+figure;     hold on;
 plot(1:NT, dist);
-hold on;
 plot(1:NT,0.3*ones(1,length(1:NT)));
 title('Distance between vehicles');
 xlabel('time [s]');
