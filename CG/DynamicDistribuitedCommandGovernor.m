@@ -61,30 +61,13 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
                 cnstr = [cnstr sum( d((i-1)*4+(1:4)) ) <= 3];
             end
             
-            %%%% old code uncomment to test
-%             xk = x;
-            %%%
-            
             for k = 1:obj.k0
-                %%%% old code uncomment to test
-%                 xk = obj.Phi*xk+obj.G*w;  % xk = (obj.Phi)^k * x0 + sum(i=1,k-1) (obj.Phi^i*obj.G)*w
-%                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
-                %%%%
-                
                 cnstr = [cnstr obj.T*(obj.Rk(:, :, k)*w) <= obj.gi - obj.T*obj.bk(:, :, k)*x];
                 for i=1:(size(obj.U,1)/4)
-                    %%%% old code uncomment to test
-%                     cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1)]; % se i vicini
-%                     cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2)];
-%                     cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3)];
-%                     cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4)];
-%                   %%%%%%%
-
-                    cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1) - obj.U((i-1)*4+1,:)*obj.bk(:, :, k)*x]; % se i vicini
-                    cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2) - obj.U((i-1)*4+2,:)*obj.bk(:, :, k)*x];
-                    cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3) - obj.U((i-1)*4+3,:)*obj.bk(:, :, k)*x];
-                    cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4) - obj.U((i-1)*4+4,:)*obj.bk(:, :, k)*x];
-                    
+                    cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1) - obj.U((i-1)*4+1,:)*obj.bk(:, :, k)*x];
+                    cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2) - obj.U((i-1)*4+2,:)*obj.bk(:, :, k)*x];
+                    cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3) - obj.U((i-1)*4+3,:)*obj.bk(:, :, k)*x];
+                    cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4) - obj.U((i-1)*4+4,:)*obj.bk(:, :, k)*x];                    
                     cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+(1:4)) )<= 3];
                 end
             end
@@ -127,28 +110,11 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
                     values{pos} = repmat(values{pos},2,1);
                 end
                 cnstr = zeros(2*length(values{pos}),obj.nc);
-%%
                 idx = strmatch(name{:},validnames);
                 for i=1:length(values{pos})
                     cnstr((i-1)*2+1,(idx-1)*obj.nc/3+i) =  1;
                     cnstr((i-1)*2+2,(idx-1)*obj.nc/3+i) = -1;
                 end
-%                 if strcmp(name{:},validnames{1}) % Position constraints
-%                     for i=1:length(values{pos})
-%                         cnstr((i-1)*2+1,i) =  1;
-%                         cnstr((i-1)*2+2,i) = -1;
-%                     end
-%                 elseif strcmp(name{:},validnames{2}) % Speed constraints
-%                     for i=1:length(values{pos})
-%                         cnstr((i-1)*2+1,obj.nc/3+i) =  1;
-%                         cnstr((i-1)*2+2,obj.nc/3+i) = -1;
-%                     end
-%                 elseif strcmp(name{:},validnames{3}) % Thrust constraints
-%                     for i=1:length(values{pos})
-%                         cnstr((i-1)*2+1,2*obj.nc/3+i) =  1;
-%                         cnstr((i-1)*2+2,2*obj.nc/3+i) = -1;
-%                     end
-%                 end
                 gi_ = repmat(values{pos},2,1);
                 T = [ T ; cnstr];   gi = [ gi ; gi_(:)];
             end
@@ -156,21 +122,68 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
             obj.gi = [obj.gi; gi];
         end
         
+        
         function add_swarm_cnstr(obj,id,varargin)
             % add_swarm_cnstr - add 2 vehicles constraints
             % id := neighbour's ID
             % varargin := 'proximity',    d_max, ...
             %             'anticollision',d_min
-            T = [];     gi = [];
+            cnstr = zeros(4,2*obj.nc);
+            cnstr(1,1) =  1;    cnstr(1,obj.nc+1) = -1;
+            cnstr(2,1) = -1;    cnstr(2,obj.nc+1) =  1;
+            cnstr(3,2) =  1;    cnstr(3,obj.nc+2) = -1;
+            cnstr(4,2) = -1;    cnstr(4,obj.nc+2) =  1;
+
             validnames = {'proximity','anticollision'};
             
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
-            %...working
+            
+            for name = params
+                validatestring(name{:}, validnames); % raise an Exception if the name is not valid
+                pos = strmatch(name{:}, params);                    
+                if strcmp(name{:},validnames{1}) % Proximity constraints
+                    if ~isempty(obj.T)
+                        obj.T  = [ obj.T zeros(size(obj.T,1),obj.nc);
+                                   cnstr(:,1:obj.nc) zeros(size(cnstr,1),size(obj.T,2)-obj.nc) cnstr(:,obj.nc+1:end) ];
+                        obj.gi = [ obj.gi; values{pos}.*ones(4,1) ];
+                    else
+                        obj.T  = cnstr;
+                        obj.gi = values{pos}.*ones(4,1);
+                    end
+                elseif strcmp(name{:},validnames{2}) % Anticollision constraints
+                    if ~isempty(obj.U)
+                        obj.U  = [ obj.U zeros(size(obj.U,1),obj.nc);
+                                   cnstr(:,1:obj.nc) zeros(size(cnstr,1),size(obj.U,2)-obj.nc) cnstr(:,obj.nc+1:end) ];
+                        obj.hi = [ obj.hi; values{pos}.*ones(4,1) ];
+                    else 
+                        obj.U = cnstr;
+                        obj.hi = values{pos}.*ones(4,1);
+                    end
+                end
+            end
+            obj.neigh = [obj.neigh id]; % add the 'id'-th vehicle to the neighbour list
         end
         
-        function add_anticollision_cnstr(obj)
-            
+        
+        function remove_swarm_cnstr(obj,id)
+            % remove_swarm_cnstr - remove all constraints with vehicle 'id'
+            % id := neighbour's ID
+            ind = find(obj.neigh == id);
+            if ind > 0
+                col = ind*obj.nc+(1:obj.nc);
+                [row,j] = find(obj.T(:,col)~=0);
+                obj.T(:,col) = [];
+                obj.T(row,:) = [];
+                obj.gi(row) = [];
+                
+                [row,j] = find(obj.U(:,col)~=0);
+                obj.U(:,col) = [];
+                obj.U(row,:) = [];
+                obj.hi(row) = [];
+                
+                obj.neigh(ind) = []; % remove the 'ind'-th neighbour form the list
+            end
         end
         
     end
