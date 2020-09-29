@@ -6,10 +6,10 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
     
     properties
         id % vehicle id
-        %Phi % closed-loop model Φ matrix
-        %G % closed-loop model G matrix
-        %Hc % closed-loop model Hc matrix
-        %L % closed-loop model L matrix
+        Phi_ % single vehicle model Φ matrix
+        G_ % single vehicle model G matrix
+        Hc_ % single vehicle model Hc matrix
+        L_ % single vehicle model L matrix
         %T % constraints matrix
         %gi % constraints vector
         U % proximity constraints matrix - matrix for OR-ed constraints
@@ -32,6 +32,8 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
             % Create an instance of a Dynamic Distribuited Command Governor.
             % Φ,G,Hc,L are the matrices of the single vehicle
             obj = obj@CommandGovernor(Phi,G,Hc,L,[],[],Psi,k0);
+            obj.Phi_ = Phi;     obj.G_ = G;
+            obj.Hc_ = Hc;       obj.L_ = L; 
             obj.id = id;
             obj.nc = size(Hc,1);
             obj.U = [];
@@ -120,6 +122,8 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
             end
             obj.T  = [obj.T ; T zeros(size(T,1),obj.nc*length(obj.neigh))];
             obj.gi = [obj.gi; gi];
+            
+            [obj.Rk, obj.bk] = obj.compute_matrix();
         end
         
         
@@ -162,6 +166,12 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
                     end
                 end
             end
+            obj.Phi = blkdiag(obj.Phi,obj.Phi_);
+            obj.G = blkdiag(obj.G,obj.G_);
+            obj.Hc = blkdiag(obj.Hc,obj.Hc_);
+            obj.L = blkdiag(obj.L,obj.L_);
+            [obj.Rk, obj.bk] = obj.compute_matrix();
+            
             obj.neigh = [obj.neigh id]; % add the 'id'-th vehicle to the neighbour list
         end
         
@@ -182,10 +192,17 @@ classdef DynamicDistribuitedCommandGovernor < CommandGovernor
                 obj.U(row,:) = [];
                 obj.hi(row) = [];
                 
+                n = size(obj.Phi,1);
+                m = size(obj.G,2);  m_ = size(obj.G_,2);
+                obj.Phi((n-obj.nc+1):n,:) = [];     obj.Phi(:,(n-obj.nc+1):n) = [];
+                obj.G((n-obj.nc+1):n,:) = [];       obj.G(:,(m-m_+1):m) = [];
+                obj.Hc((n-obj.nc+1):n,:) = [];      obj.Hc(:,(n-obj.nc+1):n) = [];
+                obj.L((n-obj.nc+1):n,:) = [];       obj.L(:,(m-m_+1):m) = [];
+                [obj.Rk, obj.bk] = obj.compute_matrix();
+                
                 obj.neigh(ind) = []; % remove the 'ind'-th neighbour form the list
             end
         end
-        
     end
     
 end
