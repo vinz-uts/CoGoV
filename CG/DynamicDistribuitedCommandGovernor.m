@@ -203,6 +203,65 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
                 obj.neigh(ind) = []; % remove the 'ind'-th neighbour form the list
             end
         end
+        
+        function pluggable = check(obj, x_i, x_n, g_i, g_n)
+            obj_tmp = obj;
+            load('obj2.mat', 'obj')
+            obj2 = obj;
+            obj = obj_tmp;
+
+            w = [g_i;g_n];
+            x = [x_i; x_n];            
+            
+            %%%% steady state vehicle constraints %%%%%
+            if(not(obj2.T*((obj2.Hc/(eye(size(obj2.Phi,1))-obj2.Phi)*obj2.G+obj2.L)*w) <= obj2.gi))
+                pluggable = false;
+                return;
+            end
+            %%%%%%%%%%%
+            
+            %%%%%%%% steady state swarm constraints %%%%%%%%
+            for i=1:(size(obj2.U,1)/4)
+                if(not(obj2.U((i-1)*4+1,:)*((obj2.Hc/(eye(size(obj2.Phi,1))-obj2.Phi)*obj2.G+obj2.L)*w) >= obj2.hi((i-1)*4+1) || ...
+                        obj2.U((i-1)*4+2,:)*((obj2.Hc/(eye(size(obj2.Phi,1))-obj2.Phi)*obj2.G+obj2.L)*w) >= obj2.hi((i-1)*4+2) ||...
+                        obj2.U((i-1)*4+3,:)*((obj2.Hc/(eye(size(obj2.Phi,1))-obj2.Phi)*obj2.G+obj2.L)*w) >= obj2.hi((i-1)*4+3) ||...
+                        obj2.U((i-1)*4+4,:)*((obj2.Hc/(eye(size(obj2.Phi,1))-obj2.Phi)*obj2.G+obj2.L)*w) >= obj2.hi((i-1)*4+4)))
+                    pluggable = false;
+                    return;
+                end
+            end
+            %%%%%%%%%%%%%%
+            
+            
+            obj2.k0 = 10;
+            [obj2.Rk, obj2.bk] = obj2.compute_matrix();
+            
+            %%%%%%% transient constraints (both vehicle and swarm ones) %%%
+            for k = 1:obj2.k0
+                if not(obj2.T*(obj2.Rk(:, :, k)*w) <= obj2.gi - obj2.T*obj2.bk(:, :, k)*x)
+                    pluggable = false;
+                    return;
+                end
+                
+                for i=1:(size(obj2.U,1)/4)
+                    if not((obj2.U((i-1)*4+1,:)*(obj2.Rk(:, :, k)*w)) >= obj2.hi((i-1)*4+1) - obj2.U((i-1)*4+1,:)*obj2.bk(:, :, k)*x ||...
+                            (obj2.U((i-1)*4+2,:)*(obj2.Rk(:, :, k)*w)) >= obj2.hi((i-1)*4+2) - obj2.U((i-1)*4+2,:)*obj2.bk(:, :, k)*x ||...
+                            (obj2.U((i-1)*4+3,:)*(obj2.Rk(:, :, k)*w)) >= obj2.hi((i-1)*4+3) - obj2.U((i-1)*4+3,:)*obj2.bk(:, :, k)*x ||...
+                            (obj2.U((i-1)*4+4,:)*(obj2.Rk(:, :, k)*w)) >= obj2.hi((i-1)*4+4) - obj2.U((i-1)*4+4,:)*obj2.bk(:, :, k)*x )
+                        pluggable = false;
+                        return;
+                    end
+                end
+            end
+            %%%%%%%%
+            
+            %%% true if all constraints are satisfied %%%%%
+            pluggable = true;
+            
+            
+        end
+        
+        
     end
     
 end

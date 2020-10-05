@@ -99,6 +99,36 @@ for t=1:NT
             x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
+            
+            %%%%%% Dynamic constraints management %%%%%%%%%
+            if norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{1}.ctrl_sys.sys.xi(1:2)) <= 3 && not(added12) && false
+                adj_matrix(1:2, 1:2) = [-1  1;
+                                         1 -1];
+                added12 = true;
+                disp('communication added 1, 2');
+                vehicle{1}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
+                vehicle{2}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
+            end
+%             if norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{3}.ctrl_sys.sys.xi(1:2)) <= 1 && not(added23)
+%                 adj_matrix(2:3, 2:3) = [-1  1;
+%                                          1 -1];
+%                 added23 = true;
+%                 disp('communication added 2,3');
+%                 vehicle{2}.cg.add_swarm_cnstr(3,'proximity',d_max,'anticollision',d_min);
+%                 vehicle{3}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
+%                 vehicle{2}.cg.check([vehicle{2}.ctrl_sys.sys.xi; vehicle{2}.ctrl_sys.xci], vehicle{2}.g, [vehicle{3}.ctrl_sys.sys.xi; vehicle{3}.ctrl_sys.xci], vehicle{3}.g)
+%             end
+%             if norm(vehicle{1}.ctrl_sys.sys.xi(1:2) - vehicle{3}.ctrl_sys.sys.xi(1:2)) <= 1 && not(added13)
+%                 adj_matrix(1, 3) = 1;
+%                 adj_matrix(3, 1) = 1;
+%                 added13 = true;
+%                 disp('communication added 1,3');
+%                 vehicle{1}.cg.add_swarm_cnstr(3,'proximity',d_max,'anticollision',d_min);
+%                 vehicle{3}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
+%                 vehicle{1}.cg.check([vehicle{1}.ctrl_sys.sys.xi; vehicle{1}.ctrl_sys.xci], vehicle{1}.g, [vehicle{3}.ctrl_sys.sys.xi; vehicle{3}.ctrl_sys.xci], vehicle{3}.g)
+%             end
+            %%%%%%%%%%%%%%%
+            
             g_n = [];
             for j=1:N
                 if adj_matrix(i,j) == 1 % i,j is neighbour
@@ -109,34 +139,8 @@ for t=1:NT
                 end
             end
             
-            [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
-            
-            %%%%%% Dynamic constraints management %%%%%%%%%
-            if norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{1}.ctrl_sys.sys.xi(1:2)) <= 1 && not(added12)
-                adj_matrix(1:2, 1:2) = [-1  1;
-                                         1 -1];
-                added12 = true;
-                disp('communication added 1, 2');
-                vehicle{1}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
-                vehicle{2}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
-            end
-            if norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{3}.ctrl_sys.sys.xi(1:2)) <= 1 && not(added23)
-                adj_matrix(2:3, 2:3) = [-1  1;
-                                         1 -1];
-                added23 = true;
-                disp('communication added 2,3');
-                vehicle{2}.cg.add_swarm_cnstr(3,'proximity',d_max,'anticollision',d_min);
-                vehicle{3}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
-            end
-            if norm(vehicle{1}.ctrl_sys.sys.xi(1:2) - vehicle{3}.ctrl_sys.sys.xi(1:2)) <= 1 && not(added13)
-                adj_matrix(1, 3) = 1;
-                adj_matrix(3, 1) = 1;
-                added13 = true;
-                disp('communication added 1,3');
-                vehicle{1}.cg.add_swarm_cnstr(3,'proximity',d_max,'anticollision',d_min);
-                vehicle{3}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
-            end
-            %%%%%%%%%%%%%%%
+            [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);                 
+                      
             
             if ~isempty(g)
                 vehicle{i}.g = g;
@@ -162,6 +166,13 @@ for t=1:NT
                 disp('WARN: old references');
                 t,i
             end
+            
+             plaggable = vehicle{1}.cg.check([vehicle{1}.ctrl_sys.sys.xi; vehicle{1}.ctrl_sys.xci], [vehicle{2}.ctrl_sys.sys.xi; vehicle{2}.ctrl_sys.xci], vehicle{1}.g, vehicle{2}.g);
+             if(plaggable)
+                 disp('ok');
+             else
+                 disp('no');
+             end
         end
     end
     
