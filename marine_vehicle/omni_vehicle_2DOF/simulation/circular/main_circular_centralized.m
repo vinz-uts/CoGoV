@@ -166,9 +166,25 @@ center = [0,0.5]';
 center2 = [0.5,0]';
 center3 = [-0.5,0];
 
-pl(1) = CircularPlanner(center, 1, 0.4, 1);
-pl(2) =  CircularPlanner(center2, 1, 0.3, -1);
-pl(3) =  CircularPlanner(center3, 1, 0.4, 1);
+xSamples = [1, 0, -1, 0]';
+ySamples = [0, 1, 0, -1]';
+
+ 
+
+ptp1 = Polar_trajectory_planner(xSamples, ySamples, 0.2, 0.1,1);
+ptp2 = Polar_trajectory_planner(xSamples, ySamples, 0.15, 0.1,-1);
+ptp3 = Polar_trajectory_planner(xSamples, ySamples, 0.2, 0.1,1);
+
+ 
+ptp1.transform(1, center);
+ptp2.transform(1, center2);
+ptp3.transform(1, center3);
+
+ 
+
+pl(1) = ptp1;
+pl(2) =  ptp2;
+pl(3) =  ptp3;
 
 % Color the net
 colors = [0,1];

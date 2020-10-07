@@ -30,7 +30,7 @@ vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,
 vehicle{1}.init_position(1.3,0);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(1.6,0.6);
+vehicle{2}.init_position(1.6,0);
 
 
 
@@ -158,8 +158,16 @@ cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
 center = [0,0]';
 
-pl(1) =  CircularPlanner(center, 1.3, 0.4, 1);
-pl(2) =  CircularPlanner(center, 1.3, 0.6, -1);
+
+xSamples = [1, 0, -1, 0]';
+ySamples = [0, 1, 0, -1]';
+
+ptp1 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples,0.3,0.1,1);
+ptp2 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples,0.2,0.1,-1);
+
+pl(1) =  ptp1;
+pl(2) =  ptp2;
+
 
 % Color the net
 colors = [0,1];

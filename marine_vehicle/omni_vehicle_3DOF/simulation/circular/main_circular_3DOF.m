@@ -11,12 +11,6 @@ vehicle_3DOF_model_2 % R-stability controller (continuous time desing)
 
 % vehicle_3DOF_model % LQI controller (discrete time design)
 
-%%%%%%% Position and input constraints
-Hc = [ eye(3)        zeros(3,6)      ;
-        -F              f            ];  
-L = zeros(6,3);
-%%%%%%
-
 
 %% Vehicles
 N = 3; % number of vehicles
@@ -53,112 +47,42 @@ T_max = 100; % max abs of motor thrust - [N]
 Psi = eye(3); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
 
-%% Augmented System and Command Governor construction
+%% Dynamic Command Governor
 for i=1:N
-    % Vehicle i
-    % Augmented neighbour matrix
-    % | Φ(i)            |
-    % |      Φ(j1)      |
-    % |           Φ(jm) |
-    Phi = vehicle{i}.ctrl_sys.Phi;
-    G = vehicle{i}.ctrl_sys.G;
-    Hc = vehicle{i}.ctrl_sys.Hc;
-    L = vehicle{i}.ctrl_sys.L;
-    
+    vehicle{i}.cg = DynamicDistribuitedCommandGovernor(i,Phi,G,Hc,L,Psi,k0, 'gurobi');
+    vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
-            Phi = blkdiag(Phi,vehicle{j}.ctrl_sys.Phi);
-            G = blkdiag(G,vehicle{j}.ctrl_sys.G);
-            Hc = blkdiag(Hc,vehicle{j}.ctrl_sys.Hc);
-            L = blkdiag(L,vehicle{j}.ctrl_sys.L);
+            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
         end
     end
-    
-    nc = size(vehicle{i}.ctrl_sys.Hc,1); % single vehicle c dimension
-    nca = size(Hc,1); % vehicle i augmented-c dimension
-    % Constraints construction
-    T = [];     gi = [];
-    U = [];     hi = [];
-    
-    k = 0; % neighbour number
-    for j=1:N
-        if adj_matrix(i,j) == 1 % i,j is neighbour
-            k = k+1;
-            % Split ||.||∞
-            cnstr = zeros(4,nca);
-            % split modules x constraints
-            % |-- i --       -- j --     |
-            % | 1 0 ..  ...  -1 0 ..  ...|
-            % |-1 0 ..  ...   1 0 ..  ...|
-            cnstr(1,1) = 1;
-            cnstr(1,(k*nc)+1) = -1;
-            cnstr(2,1) = -1;
-            cnstr(2,(k*nc)+1) = 1;
-            % split modules y constraints
-            % |-- i --       -- j --     |
-            % |0  1 ..  ...  0 -1 ..  ...|
-            % |0 -1 ..  ...  0  1 ..  ...|
-            cnstr(3,2) = 1;
-            cnstr(3,(k*nc)+2) = -1;
-            cnstr(4,2) = -1;
-            cnstr(4,(k*nc)+2) = 1;
-            
-            % Matrix for neighbour remoteness constraints
-            % T*c ≤ gi
-            if ~isempty(T)
-                T = [T;cnstr];
-                gi = [gi;[d_max,d_max,d_max,d_max]'];
-            else
-                T = cnstr;
-                gi = [d_max,d_max,d_max,d_max]';
-            end
-            
-            % Matrix for neighbour proximity constraints
-            % U*c ≤ hi (row-by-row OR-ed constrains)
-            if ~isempty(U)
-                U = [U;cnstr];
-                hi = [hi;[d_min,d_min,d_min,d_min]'];
-            else
-                U = cnstr;
-                hi = [d_min,d_min,d_min,d_min]';
-            end
-        end
-    end
-    
-    % Speed and thrust constraints
-    % T_*c_ ≤ gi_       single vehicle constraints
-    %      x  y  ϑ  Tx Ty Tϑ
-    T_ = [
-           0  0  0   1  0  0 ;
-           0  0  0  -1  0  0 ;
-           0  0  0   0  1  0 ;
-           0  0  0   0 -1  0 ;
-           0  0  0   0  0  1 ;
-           0  0  0   0  0 -1 ];
-    gi_ = [T_max,T_max,T_max,T_max,T_max,T_max]';
-    
-    Ta = T_;    ga = gi_;
-    
-    T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
-    
-%     for j=1:k
-%         Ta = blkdiag(Ta,T_);
-%         ga = [ga;gi_];
-%     end
-%     T = [Ta;T];     gi = [ga;gi];
-    
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end
 
 %% Planner
-
 center = [0,0.5]';
 center2 = [0.5,0]';
 center3 = [-0.5,0];
 
-pl(1) = CircularPlanner(center, 1, 0.4, 1);
-pl(2) =  CircularPlanner(center2, 1, 0.3, -1);
-pl(3) =  CircularPlanner(center3, 1, 0.4, 1);
+
+xSamples = [1, 0, -1, 0]';
+ySamples = [0, 1, 0, -1]';
+
+ 
+
+ptp1 = Polar_trajectory_planner(xSamples, ySamples);
+ptp2 = Polar_trajectory_planner(xSamples, ySamples);
+ptp3 = Polar_trajectory_planner(xSamples, ySamples);
+
+ 
+ptp1.transform(1, center);
+ptp2.transform(1, center2);
+ptp3.transform(1, center3);
+
+ 
+
+pl(1) = ptp1;
+pl(2) =  ptp2;
+pl(3) =  ptp3;
 
 % Color the net
 colors = [0,1];

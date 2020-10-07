@@ -60,7 +60,14 @@ vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 vehicle.cg = CommandGovernor(Phi,G,Hc,L,T,b,Psi,k0);
 
 %% Simulation
-Tf = 10; % simulation time
+%%% Planner
+xSamples = [1, 0.8, 0.5, 0, -0.25, -0.6, -0.75 -1, -1, -0.5, 0, 0.35, 0.7]';
+ySamples = [0, 0.45, 0.7, 1, 0.9, 0.75, 0.3, 0, -0.5, -0.7, -1, -1, -0.45]';
+
+ptp = Polar_trajectory_planner([xSamples(1:floor(length(xSamples)/2)); xSamples(1)], [ySamples(1:floor(length(ySamples)/2)); ySamples(1)]);
+
+
+Tf = 30; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
 r = [10,6]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
@@ -69,19 +76,25 @@ N = ceil(Tf/Tc_cg); % simulation steps number
 % names are self-explanatory
 cputime =[];
 yalmiptime = [];
-
+figure(1);
+axis([-2 2 -2 2]);
+plot(ptp, 'k');
+hold on
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
-    [g,s] = vehicle.cg.compute_cmd(xa,r);
+    [g,s] = vehicle.cg.compute_cmd(xa,ptp.compute_reference(vehicle.ctrl_sys.sys));
     vehicle.ctrl_sys.sim(g,Tc_cg);
     cputime= [cputime,s.solvertime];
     yalmiptime=[yalmiptime,s.yalmiptime];
+    plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'.');
+    hold on 
+    drawnow
 end
 
 %% Plot Simulation Result
-figure
-plot_simulation(vehicle.ctrl_sys);
-
-plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'.');
+% figure
+% plot_simulation(vehicle.ctrl_sys);
+% 
+% plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'.');

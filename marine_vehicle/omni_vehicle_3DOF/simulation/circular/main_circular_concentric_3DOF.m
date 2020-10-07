@@ -10,14 +10,6 @@ close all;
 vehicle_3DOF_model_2 % R-stability controller (continuous time desing)
 
 % vehicle_3DOF_model % LQI controller (discrete time design)
-
-%%%%%%% Position and input constraints
-Hc = [ eye(3)        zeros(3,6)      ;
-        -F              f            ];  
-L = zeros(6,3);
-%%%%%%
-
-
 %% Vehicles
 N = 2; % number of vehicles
 
@@ -26,7 +18,7 @@ vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,
 vehicle{1}.init_position(1.3,0,0);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(1.6,0.6,0);
+vehicle{2}.init_position(1.6,0,0);
 
 %% Net configuration
 %   1
@@ -49,108 +41,25 @@ T_max = 100; % max abs of motor thrust - [N]
 Psi = eye(3); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
 
-%% Augmented System and Command Governor construction
+%% Dynamic Command Governor
 for i=1:N
-    % Vehicle i
-    % Augmented neighbour matrix
-    % | Φ(i)            |
-    % |      Φ(j1)      |
-    % |           Φ(jm) |
-    Phi = vehicle{i}.ctrl_sys.Phi;
-    G = vehicle{i}.ctrl_sys.G;
-    Hc = vehicle{i}.ctrl_sys.Hc;
-    L = vehicle{i}.ctrl_sys.L;
-    
+    vehicle{i}.cg = DynamicDistribuitedCommandGovernor(i,Phi,G,Hc,L,Psi,k0, 'gurobi');
+    vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
-            Phi = blkdiag(Phi,vehicle{j}.ctrl_sys.Phi);
-            G = blkdiag(G,vehicle{j}.ctrl_sys.G);
-            Hc = blkdiag(Hc,vehicle{j}.ctrl_sys.Hc);
-            L = blkdiag(L,vehicle{j}.ctrl_sys.L);
+            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
         end
     end
-    
-    nc = size(vehicle{i}.ctrl_sys.Hc,1); % single vehicle c dimension
-    nca = size(Hc,1); % vehicle i augmented-c dimension
-    % Constraints construction
-    T = [];     gi = [];
-    U = [];     hi = [];
-    
-    k = 0; % neighbour number
-    for j=1:N
-        if adj_matrix(i,j) == 1 % i,j is neighbour
-            k = k+1;
-            % Split ||.||∞
-            cnstr = zeros(4,nca);
-            % split modules x constraints
-            % |-- i --       -- j --     |
-            % | 1 0 ..  ...  -1 0 ..  ...|
-            % |-1 0 ..  ...   1 0 ..  ...|
-            cnstr(1,1) = 1;
-            cnstr(1,(k*nc)+1) = -1;
-            cnstr(2,1) = -1;
-            cnstr(2,(k*nc)+1) = 1;
-            % split modules y constraints
-            % |-- i --       -- j --     |
-            % |0  1 ..  ...  0 -1 ..  ...|
-            % |0 -1 ..  ...  0  1 ..  ...|
-            cnstr(3,2) = 1;
-            cnstr(3,(k*nc)+2) = -1;
-            cnstr(4,2) = -1;
-            cnstr(4,(k*nc)+2) = 1;
-            
-            % Matrix for neighbour remoteness constraints
-            % T*c ≤ gi
-            if ~isempty(T)
-                T = [T;cnstr];
-                gi = [gi;[d_max,d_max,d_max,d_max]'];
-            else
-                T = cnstr;
-                gi = [d_max,d_max,d_max,d_max]';
-            end
-            
-            % Matrix for neighbour proximity constraints
-            % U*c ≤ hi (row-by-row OR-ed constrains)
-            if ~isempty(U)
-                U = [U;cnstr];
-                hi = [hi;[d_min,d_min,d_min,d_min]'];
-            else
-                U = cnstr;
-                hi = [d_min,d_min,d_min,d_min]';
-            end
-        end
-    end
-    
-    % Speed and thrust constraints
-    % T_*c_ ≤ gi_       single vehicle constraints
-    %      x  y  ϑ  Tx Ty Tϑ
-    T_ = [
-           0  0  0   1  0  0 ;
-           0  0  0  -1  0  0 ;
-           0  0  0   0  1  0 ;
-           0  0  0   0 -1  0 ;
-           0  0  0   0  0  1 ;
-           0  0  0   0  0 -1 ];
-    gi_ = [T_max,T_max,T_max,T_max,T_max,T_max]';
-    
-    
-    Ta = T_;    ga = gi_;
-    T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
-    
-%     for j=1:k
-%         Ta = blkdiag(Ta,T_);
-%         ga = [ga;gi_];
-%     end
-%     T = [Ta;T];     gi = [ga;gi];
-    
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 end
-
 %% Planner
-center = [0,0]';
+xSamples = [1, 0, -1, 0]';
+ySamples = [0, 1, 0, -1]';
 
-pl(1) =  CircularPlanner(center, 1.3, 0.4, 1);
-pl(2) =  CircularPlanner(center, 1.3, 0.6, -1);
+ptp1 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples,0.3,0.1,1);
+ptp2 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples,0.2,0.1,-1);
+
+pl(1) =  ptp1;
+pl(2) =  ptp2;
 
 % Color the net
 colors = [0,1];

@@ -35,7 +35,7 @@ adj_matrix = [-1  0 0;
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 200; % maximum distance between vehicles - [m]
+d_max = 1.5; % maximum distance between vehicles - [m]
 d_min = 0.1; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
@@ -45,7 +45,7 @@ T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 0.01*eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
+k0 = 40; % prediction horizon
 
 %% Dynamic Command Governor
 for i=1:N
@@ -57,6 +57,7 @@ for i=1:N
 %         end
     end
 end
+
 
 %% Color the net
 colors = [0,1,2];
@@ -79,12 +80,13 @@ dist12 = []; %%% check for collition constraints
 dist13 = []; %%% check for collition constraints
 dist23 = []; %%% check for collition constraints
 
-
+plaggable = false;
+alreadyplag = false;
 
 %%%%%%%%%% Frontal Collision References
 r{1} = vehicle{2}.ctrl_sys.sys.xi(1:2);
 r{2} = vehicle{1}.ctrl_sys.sys.xi(1:2);
-r{3} = [-1, -1]';
+r{3} =  vehicle{3}.ctrl_sys.sys.xi(1:2);
 
 %%%% Dynamic constraits management %%%%
 added13 = false;
@@ -101,14 +103,14 @@ for t=1:NT
             xa = [x;xc];
             
             %%%%%% Dynamic constraints management %%%%%%%%%
-            if norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{1}.ctrl_sys.sys.xi(1:2)) <= 3 && not(added12) && false
-                adj_matrix(1:2, 1:2) = [-1  1;
-                                         1 -1];
-                added12 = true;
-                disp('communication added 1, 2');
-                vehicle{1}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
-                vehicle{2}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
-            end
+%             if (norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{1}.ctrl_sys.sys.xi(1:2)) <= 3 && not(added12) && false)
+%                 adj_matrix(1:2, 1:2) = [-1  1;
+%                                          1 -1];
+%                 added12 = true;
+%                 disp('communication added 1, 2');
+%                 vehicle{1}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
+%                 vehicle{2}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
+%             end
 %             if norm(vehicle{2}.ctrl_sys.sys.xi(1:2) - vehicle{3}.ctrl_sys.sys.xi(1:2)) <= 1 && not(added23)
 %                 adj_matrix(2:3, 2:3) = [-1  1;
 %                                          1 -1];
@@ -139,7 +141,68 @@ for t=1:NT
                 end
             end
             
-            [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);                 
+            if(not(plaggable))
+                plaggable = vehicle{1}.cg.check([vehicle{1}.ctrl_sys.sys.xi; vehicle{1}.ctrl_sys.xci], [vehicle{2}.ctrl_sys.sys.xi; vehicle{2}.ctrl_sys.xci], vehicle{1}.g, vehicle{2}.g, d_max, d_min);
+            end
+            
+            
+            if(plaggable && t > 10 && not(alreadyplag))
+                disp('ok');
+                
+                adj_matrix(1:2, 1:2) = [-1  1;
+                    1 -1];
+                added12 = true;
+                disp('communication added 1, 2');
+                vehicle{1}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
+                vehicle{2}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
+                g_n = [];
+                
+                for j=1:N
+                    if adj_matrix(i,j) == 1 % i,j is neighbour
+                        g_n = [g_n;vehicle{j}.g];
+                        x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
+                        xc = vehicle{j}.ctrl_sys.xci; % controller current state
+                        xa = [xa;x;xc];
+                    end
+                end
+                
+                [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
+                alreadyplag = true;
+            elseif (not(plaggable) || t == 1)
+                
+                [rs,rns] = vehicle{1}.cg.compute_virtual_cmd(r{1},g_n, d_max, d_min);
+                 disp('no');
+               
+                 g= rs;
+                 vehicle{1}.g = rs;
+                 vehicle{2}.g = rns;
+                 
+                 if((i==3))
+                     g = r{3};
+                 end
+            elseif(alreadyplag)
+                g_n = [];
+                x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
+                xc = vehicle{i}.ctrl_sys.xci; % controller current state
+                xa = [x;xc];
+                
+                for j=1:N
+                    if adj_matrix(i,j) == 1 % i,j is neighbour
+                        g_n = [g_n;vehicle{j}.g];
+                        x = vehicle{j}.ctrl_sys.sys.xi; % vehicle current state
+                        xc = vehicle{j}.ctrl_sys.xci; % controller current state
+                        xa = [xa;x;xc];
+                    end
+                end
+                
+                [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
+                 
+            end
+             
+            
+            
+            
+%             [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);                 
                       
             
             if ~isempty(g)
@@ -159,20 +222,15 @@ for t=1:NT
                 %%%%%%%%%%%%
                 
                 %%%%% Data collection (optimization) %%%%%%
-                cputime = [cputime,s.solvertime];
-                yalmiptime = [yalmiptime,s.yalmiptime];
+%                 cputime = [cputime,s.solvertime];
+%                 yalmiptime = [yalmiptime,s.yalmiptime];
                 %%%%%%%%%%%%%%
             else
                 disp('WARN: old references');
                 t,i
             end
             
-             plaggable = vehicle{1}.cg.check([vehicle{1}.ctrl_sys.sys.xi; vehicle{1}.ctrl_sys.xci], [vehicle{2}.ctrl_sys.sys.xi; vehicle{2}.ctrl_sys.xci], vehicle{1}.g, vehicle{2}.g);
-             if(plaggable)
-                 disp('ok');
-             else
-                 disp('no');
-             end
+             
         end
     end
     

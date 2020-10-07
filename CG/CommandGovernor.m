@@ -94,7 +94,7 @@ classdef CommandGovernor < handle
             fprintf("Solver setted: %s\n",obj.solver_name);
         end % check_solver
         
-        function [Rk, bk] = compute_matrix(obj)
+        function [Rk, bk] = compute_matrix(obj, Phi, Hc, G, L, k0)
             % code optimization
             % computation of matrices for direct state evolution
             % output:
@@ -107,18 +107,35 @@ classdef CommandGovernor < handle
             %           to the known term
             
             % preallocation for code speed up
-            bk = zeros(length(obj.Hc(:, 1)), length(obj.Phi(1, :)), obj.k0);
-            [m, n] = size(obj.L);
-            Rk = zeros(m, n, obj.k0);
             
-            for k = 1:obj.k0 % for each prediction compute a Rk, bk
-                bk(:, :, k) = (obj.Hc*(obj.Phi^k));
+            if(nargin>1)
+                bk = zeros(length(Hc(:, 1)), length(Phi(1, :)), k0);
+                [m, n] = size(L);
+                Rk = zeros(m, n, k0);
                 
-                Rk_temp = zeros(length(obj.Phi), length(obj.G(1, :)));
-                for j = 0:k-1
-                    Rk_temp = Rk_temp + (obj.Phi^j)*obj.G;
+                for k = 1:k0 % for each prediction compute a Rk, bk
+                    bk(:, :, k) = (Hc*(Phi^k));
+                    
+                    Rk_temp = zeros(length(Phi), length(G(1, :)));
+                    for j = 0:k-1
+                        Rk_temp = Rk_temp + (Phi^j)*G;
+                    end
+                    Rk(:, :, k) = Hc*Rk_temp + L;
                 end
-                Rk(:, :, k) = obj.Hc*Rk_temp + obj.L;
+            else
+                bk = zeros(length(obj.Hc(:, 1)), length(obj.Phi(1, :)), obj.k0);
+                [m, n] = size(obj.L);
+                Rk = zeros(m, n, obj.k0);
+                
+                for k = 1:obj.k0 % for each prediction compute a Rk, bk
+                    bk(:, :, k) = (obj.Hc*(obj.Phi^k));
+                    
+                    Rk_temp = zeros(length(obj.Phi), length(obj.G(1, :)));
+                    for j = 0:k-1
+                        Rk_temp = Rk_temp + (obj.Phi^j)*obj.G;
+                    end
+                    Rk(:, :, k) = obj.Hc*Rk_temp + obj.L;
+                end
             end
         end % private methods
     end  
