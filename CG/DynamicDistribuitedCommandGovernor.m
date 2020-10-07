@@ -207,11 +207,13 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
+            proximity_cnstr_flag = 0;
             
             for name = params
                 validatestring(name{:}, validnames); % raise an Exception if the name is not valid
                 pos = strmatch(name{:}, params);
                 if strcmp(name{:},validnames{1}) % Proximity constraints
+                    proximity_cnstr_flag = 1;
                     if ~isempty(obj.T)
                         obj.T  = [ obj.T zeros(size(obj.T,1),obj.nc);
                             cnstr(:,1:obj.nc) zeros(size(cnstr,1),size(obj.T,2)-obj.nc) cnstr(:,obj.nc+1:end) ];
@@ -230,6 +232,10 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
                         obj.hi = values{pos}.*ones(4,1);
                     end
                 end
+            end
+            
+            if ~proximity_cnstr_flag % extend T matrix
+                obj.T = [ obj.T zeros(size(obj.T,1),obj.nc) ];
             end
             obj.Phi = blkdiag(obj.Phi,obj.Phi_);
             obj.G = blkdiag(obj.G,obj.G_);
