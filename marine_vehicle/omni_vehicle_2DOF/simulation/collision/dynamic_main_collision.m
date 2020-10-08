@@ -155,6 +155,7 @@ for t=1:NT
                 disp('communication added 1, 2');
                 vehicle{1}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
                 vehicle{2}.cg.add_swarm_cnstr(1,'proximity',d_max,'anticollision',d_min);
+                
                 g_n = [];
                 
                 for j=1:N
@@ -168,6 +169,7 @@ for t=1:NT
                 
                 [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
                 alreadyplag = true;
+                
             elseif (not(plaggable) || t == 1)
                 
                 [rs,rns] = vehicle{1}.cg.compute_virtual_cmd(r{1},g_n, d_max, d_min);
