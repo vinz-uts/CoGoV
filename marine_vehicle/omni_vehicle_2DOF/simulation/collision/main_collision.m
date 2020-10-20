@@ -28,10 +28,10 @@ N = 2; % number of vehicles
 
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(1,0);
+vehicle{1}.init_position(0,1);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(5,0);
+vehicle{2}.init_position(1,0);
 
 
 %% Net configuration
@@ -51,8 +51,8 @@ d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come rifer
 T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = 100*eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
+Psi = 0.1*eye(2); % vehicle's references weight matrix
+k0 = 20; % prediction horizon
 
 %% Augmented System and Command Governor construction
 for i=1:N
@@ -144,7 +144,7 @@ for i=1:N
 %     end
 %     T = [Ta;T];     gi = [ga;gi];
 %     
-    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
+    vehicle{i}.cg = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'bmibnb');
 end
 
 %% Color the net
@@ -166,14 +166,14 @@ yalmiptime = [];
 dist = []; %%% check for collition constraints
 
 %%%%%%%%%% Crossed Collision References
-% Uncomment to test
-r{1} = [5.2,0]';
-r{2} = [0.8,0]';
+% % Uncomment to test
+% r{1} = [2,1]';
+% r{2} = [1,-3]';
 
 %%%%%%%%%% Frontal Collision References
 % % Uncomment to test
-% r{1} = vehicle{2}.ctrl_sys.sys.xi(1:2);
-% r{2} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+r{1} = vehicle{2}.ctrl_sys.sys.xi(1:2);
+r{2} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 
 for t=1:NT
     for i=1:N

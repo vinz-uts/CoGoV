@@ -20,7 +20,7 @@ vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,
 vehicle{3}.init_position(0,-1);
 
 vehicle{4} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{4}.init_position(1,2.5);  %%% A 2.2 abbiamo dei problemi 
+vehicle{4}.init_position(0.5,2);  
 % end
 
 %% Net configuration
@@ -36,7 +36,7 @@ adj_matrix = [-1  1  1  0;
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||? ? d_max
 % ||(x,y)_i-(x,y)_j||? ? d_min
-d_max = 1.5; % maximum distance between vehicles - [m]
+d_max = 2.5; % maximum distance between vehicles - [m]
 d_min = 0.3; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
@@ -45,8 +45,8 @@ Vy = 1; % max abs of speed along y - [m/s]
 T_max = 2; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
+Psi = 0.1*eye(2); % vehicle's references weight matrix
+k0 = 20; % prediction horizon
 
 %% Dynamic Command Governor
 for i=1:N
@@ -90,8 +90,7 @@ alreadyplag = false;
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2) + [2, 0]';
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2) + [2, 0]';
 r{3} =  vehicle{3}.ctrl_sys.sys.xi(1:2) + [2, 0]';
-% r{4} =  vehicle{4}.ctrl_sys.sys.xi(1:2) + [0, 2]';
-r{4} = [1,-3]';
+r{4} = [0.5,-3]';
 
 %%%%% Binary variables usefull to PnP operation
 ask_to_freeze = [false, false, false, false]';
@@ -101,12 +100,6 @@ pluggable = false;
 %%%%% Virtual references 
 r_stari = [];  
 r_starn1 = [];
-
-% %%%% Dynamic constraits management %%%%
-% added13 = false;
-% added23 = false;
-% added12 = false;
-% %%%%%%%%%%%
 
 %%% Vector for distance between i and N+1 for plotting purposes
 
@@ -133,20 +126,20 @@ for t=1:NT
             
             %%%% Condition to plug verified by vehicle N+1
             if(colors(round)==vehicle{4}.color)
-                if(norm(vehicle{2}.ctrl_sys.sys.xi(1:2)-vehicle{4}.ctrl_sys.sys.xi(1:2))<1 ...
+                if(norm(vehicle{2}.ctrl_sys.sys.xi(1:2)-vehicle{4}.ctrl_sys.sys.xi(1:2)) < 3*d_min ...
                         && not(ask_to_plug) && isempty(find(vehicle{2}.cg.neigh==4, 1)))
                     ask_to_plug = true; 
                     disp('Richiesta di Plug settata');
                 end
             end
             
-            if(norm(vehicle{2}.ctrl_sys.sys.xi(1:2)-vehicle{4}.ctrl_sys.sys.xi(1:2)) < 0.01)
-                error('Collided');
+            if(norm(vehicle{2}.ctrl_sys.sys.xi(1:2)-vehicle{4}.ctrl_sys.sys.xi(1:2)) < d_min)
+                warning('Minimum distance violated');
             end
             %%%% Pluggability condition verified by vehicle i
             if(ask_to_plug && i==2)
                 pluggable = vehicle{2}.cg.check([vehicle{2}.ctrl_sys.sys.xi; vehicle{2}.ctrl_sys.xci], ...
-                    [vehicle{4}.ctrl_sys.sys.xi; vehicle{4}.ctrl_sys.xci], vehicle{2}.g, vehicle{4}.g, d_max, d_min);
+                    [vehicle{4}.ctrl_sys.sys.xi; vehicle{4}.ctrl_sys.xci], vehicle{2}.g, vehicle{4}.g, [], d_min);
                 disp('Funzione di check Pluggable');
             end
             
@@ -157,10 +150,10 @@ for t=1:NT
                 adj_matrix(4,2)=1;
                 adj_matrix(2,4)=1;
                 disp('communication added 2, 4');
-                vehicle{2}.cg.add_swarm_cnstr(4,'proximity',d_max,'anticollision',d_min);
-                vehicle{4}.cg.add_swarm_cnstr(2,'proximity',d_max,'anticollision',d_min);
+                vehicle{2}.cg.add_swarm_cnstr(4,'anticollision',d_min);
+                vehicle{4}.cg.add_swarm_cnstr(2,'anticollision',d_min);
                 r{2} = [2, 1]';
-                r{4} = [1,-3]';
+                r{4} = [0.5,-3]';
                 ask_to_plug = false;
                 pluggable = false;
                 r_stari = [];
@@ -189,7 +182,8 @@ for t=1:NT
                 %%% (ONLY ONCE)
                 if(isempty(r_stari) && isempty(r_starn1))
                     disp('Calcolo riferimenti virtuali');
-                    [r_stari,r_starn1] = vehicle{i}.cg.compute_virtual_cmd(r{i},g_n, d_max, d_min);%, [vehicle{4}.ctrl_sys.sys.xi;vehicle{4}.ctrl_sys.xci]);
+                    [r_stari,r_starn1] = vehicle{i}.cg.compute_virtual_cmd(r{i},vehicle{4}.ctrl_sys.sys.xi(1:2),g_n, d_max, d_min);%, [vehicle{4}.ctrl_sys.sys.xi;vehicle{4}.ctrl_sys.xci]);
+                
                 end
                 r{2} = r_stari;
                 r{4} = r_starn1;
@@ -201,24 +195,22 @@ for t=1:NT
             %%% are plugging 
             
             if((ask_to_freeze(i))) % || ... %% If I have to freeze my reference
-%                     (i==2 && not(isempty(r_stari))) || ... %% If I have to track virtual reference
-%                     (i==4 && not(isempty(r_starn1)))) %% If I have to track virtual reference 
-                     g = vehicle{i}.g;
+                %                     (i==2 && not(isempty(r_stari))) || ... %% If I have to track virtual reference
+                %                     (i==4 && not(isempty(r_starn1)))) %% If I have to track virtual reference
+                g = vehicle{i}.g;
             else
                 [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
+                cputime= [cputime,s.solvertime];
+                yalmiptime=[yalmiptime,s.yalmiptime];
             end
-             
+            
             if ~isempty(g)
                 vehicle{i}.g = g;
                 %%%% live plot %%%%
                 plot(r{i}(1), r{i}(2), strcat(plot_color(i), 'o'));
                 plot(g(1), g(2), strcat(plot_color(i), 'x'));
                 %%%%%%%%%%%%
-
-                %%%%% Data collection of optimization times %%%%%%
-%                 cputime= [cputime,s.solvertime];
-%                 yalmiptime=[yalmiptime,s.yalmiptime];
-%                 %%%%%%%%%%%%%%
+                
             else
                 disp('WARN: old references');
                 t,i
@@ -253,37 +245,21 @@ end
 
 
 figure;
-plot(1:NT, dist);
+plot((1:NT)*Tc_cg, dist);
 hold on;
-plot(1:NT,d_min*ones(1,length(1:NT)));
+plot((1:NT)*Tc_cg,d_min*ones(1,length(1:NT)));
 title('Distance between vehicles i and N+1');
 xlabel('time [s]');
 ylabel('distance [m]');
 
-% figure;
-% subplot(3, 1, 1);
-% plot(1:NT, dist12);
-% hold on;
-% plot(1:NT,d_min*ones(1,length(1:NT)));
-% title('Distance between vehicles 1 2');
-% xlabel('time [s]');
-% ylabel('distance [m]');
-% 
-% %%%%%%%%%%%%
-% subplot(3, 1, 2);
-% plot(1:NT, dist13);
-% hold on;
-% plot(1:NT,d_min*ones(1,length(1:NT)));
-% title('Distance between vehicles 1 3');
-% xlabel('time [s]');
-% ylabel('distance [m]');
-% 
-% %%%%%%%%%
-% subplot(3, 1, 3);
-% plot(1:NT, dist23);
-% hold on;
-% plot(1:NT,d_min*ones(1,length(1:NT)));
-% title('Distance between vehicles 2 3');
-% xlabel('time [s]');
-% ylabel('distance [m]');
-% 
+figure(2);
+subplot(2,1,1);
+plot((1:(NT/length(cputime)):NT+(NT/length(cputime)))*Tc_cg,cputime);
+hold on;
+plot((1:(NT/length(cputime)):NT+(NT/length(cputime)))*Tc_cg,ones(1,length(cputime))*mean(cputime));
+title('Cputime');
+subplot(2,1,2);
+plot((1:(NT/length(cputime)):NT+(NT/length(cputime)))*Tc_cg,yalmiptime);
+hold on;
+plot((1:(NT/length(cputime)):NT+(NT/length(cputime)))*Tc_cg,ones(1,length(cputime))*mean(yalmiptime));
+title('Yalmiptime');

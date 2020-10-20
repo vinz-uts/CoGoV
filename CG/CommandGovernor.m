@@ -57,6 +57,15 @@ classdef CommandGovernor < handle
                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
             end
             
+            %%% Uncomment to plot Convex Hull of constraits sets 
+%             hulla = hull(cnstr);
+%             plot(hull);
+%             hold on;
+
+            %%% Uncomment to plot constraints 
+%            plot(cnstr);
+%            hold on;
+
             % Objective function
             obj_fun = (r-w)'*obj.Psi*(r-w);
             % Solver options

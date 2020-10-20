@@ -53,10 +53,6 @@ classdef Polar_trajectory_planner < handle
             end
         end
         function transform(obj, sF, xy)
-            if(sF == 1)
-                obj.center = obj.center + xy;
-                return
-            end
             x = sF*(obj.xSamples + xy(1));
             y = sF*(obj.ySamples + xy(2));
             obj.computeParameterization(x, y);
@@ -79,8 +75,8 @@ classdef Polar_trajectory_planner < handle
             if(isempty(obj.p_old))
                 obj.p_old = p;
             end
-            [rho_p, theta_p] = obj.xy2polar(p(1), p(2));
-            [rho_r, theta_r] = obj.xy2polar(obj.r_old(1), obj.r_old(2));
+            theta_p = obj.xy2polar(p(1), p(2));
+            theta_r = obj.xy2polar(obj.r_old(1), obj.r_old(2));
             % The reference is not updated if the current one has not been reached
             if(norm(theta_p - theta_r) > obj.tol && obj.counter < obj.standstill)
                 r = obj.r_old;
@@ -115,10 +111,14 @@ classdef Polar_trajectory_planner < handle
             rho = obj.evaluate(theta);
             [x, y] = obj.polar2xy(rho, theta);
             plot(x, y, color);
+            tf = ishold;
             hold on;
             plot(obj.center(1), obj.center(2), strcat('o', color));
 %             plot(obj.xSamples, obj.ySamples, 'x');
-            hold off;
+            if(not(tf))
+                hold off;
+            end
+            
         end
     end
     methods (Access = private)

@@ -10,20 +10,11 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
         G_ % single vehicle model G matrix
         Hc_ % single vehicle model Hc matrix
         L_ % single vehicle model L matrix
-        %T % constraints matrix
-        %gi % constraints vector
-        %U % proximity constraints matrix - matrix for OR-ed constraints
-        %hi % proximity constraints vector - vector for OR-ed constraints
-        %Psi % reference weight Ψ matrix
-        %k0 % prediction steps number
-        %solver_name % name of the numerical solver
         neigh % neighbours list
         datacheck % matrices useful for check function
     end
     
     properties(Access = protected)
-        %Rk % Rk matrix for code speed up
-        %bk % bk matrix for code speed up
         nc % size of single vehicle constraints vector
     end
     
@@ -58,56 +49,6 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             
         end
         
-        
-        %         function [g, ris] = compute_cmd(obj,x,r,g_n)
-        %             % compute_cmd - calculate the reference g.
-        %             % Calculate the nearest reference g to r start from initial
-        %             % global conditions x and g_n reference for the other systems.
-        %             g = sdpvar(length(r),1);
-        %             w = [g;g_n];
-        %             b = binvar(size(obj.U,1)*obj.k0,1);
-        %             d = binvar(size(obj.U,1),1);
-        %             mu = 10000;
-        %             cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
-        %             for i=1:(size(obj.U,1)/4)
-        %                 cnstr = [cnstr obj.U((i-1)*4+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+1)-mu*d((i-1)*4+1)];
-        %                 cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+2)-mu*d((i-1)*4+2)];
-        %                 cnstr = [cnstr obj.U((i-1)*4+3,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+3)-mu*d((i-1)*4+3)];
-        %                 cnstr = [cnstr obj.U((i-1)*4+4,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+4)-mu*d((i-1)*4+4)];
-        %                 cnstr = [cnstr sum( d((i-1)*4+(1:4)) ) <= 3];
-        %             end
-        %
-        %             for k = 1:obj.k0
-        %                 cnstr = [cnstr obj.T*(obj.Rk(:, :, k)*w) <= obj.gi - obj.T*obj.bk(:, :, k)*x];
-        %                 for i=1:(size(obj.U,1)/4)
-        %                     cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1) - obj.U((i-1)*4+1,:)*obj.bk(:, :, k)*x];
-        %                     cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2) - obj.U((i-1)*4+2,:)*obj.bk(:, :, k)*x];
-        %                     cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3) - obj.U((i-1)*4+3,:)*obj.bk(:, :, k)*x];
-        %                     cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4) - obj.U((i-1)*4+4,:)*obj.bk(:, :, k)*x];
-        %                     cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+(1:4)) )<= 3];
-        %                 end
-        %             end
-        %
-        %             % Objective function
-        %             obj_fun = (r-g)'*obj.Psi*(r-g);
-        %
-        %             % Solver options
-        %             assign(g, r); % initial guessing (possible optimization speed up)
-        %
-        %             options = sdpsettings('verbose',0,'solver',obj.solver_name,'usex0',1,'cachesolvers',1);
-        %
-        %             ris = optimize(cnstr,obj_fun,options);
-        %             g = double(g);
-        %
-        %             if(ris.problem ~= 0)
-        %                 fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
-        %                 g = [];
-        %             end
-        %
-        %             clear('yalmip');
-        %         end
-        
-        
         function add_vehicle_cnstr(obj,varargin)
             % add_vehicle_cnstr - add single vehicle constraints
             % varargin := 'position',[x_max,y_max,ϑ_max], ...
@@ -140,7 +81,7 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             [obj.Rk, obj.bk] = obj.compute_matrix();
         end
         
-        function [rs, rns] = compute_virtual_cmd(obj,r,g_n,dmax,dmin) %,xn1)
+        function [rs, rns] = compute_virtual_cmd(obj,r,rn1,g_n,dmax,dmin) 
             %%% rs is the virtual reference for vehicle i 
             %%% rns is the virtuaal reference for vehicle N+1
             %%% r is equal to previous reference g(t-1)
@@ -154,14 +95,7 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
             
             cnstr = [cnstr obj.T(1:8,1:6)*((obj.Hc_/(eye(size(obj.Phi_,1))-obj.Phi_)*obj.G_+obj.L_)*wn1) <= obj.gi(1:8)];
-%             xk = xn1;
-%             
-%              for k = 1:10
-%                 %%%% old code uncomment to test
-%                 xk = obj.Phi_*xk+obj.G_*wn1;  % xk = (obj.Phi)^k * x0 + sum(i=1,k-1) (obj.Phi^i*obj.G)*w
-%                 cnstr = [cnstr obj.T(1:8,1:6)*(obj.Hc_*xk+obj.L_*wn1) <= obj.gi(1:8)];
-%              end
-%             
+ 
             for i=1:(size(obj.U,1)/4)
                 cnstr = [cnstr obj.U((i-1)*4+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+1)-mu*d((i-1)*4+1)];
                 cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+2)-mu*d((i-1)*4+2)];
@@ -188,11 +122,11 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
                 cnstr = [cnstr sum( dnew((1:4)) ) <= 3];
             end
             
-             % Objective function
-            obj_fun = (r-w1)'*obj.Psi*(r-w1);
+             % Objective function evaluating both references 
+            obj_fun = 0.8*(r-w1)'*obj.Psi*(r-w1) + 0.2*(rn1-wn1)'*obj.Psi*(rn1-wn1) ;
              % Solver options
             assign(w1, r); % initial guessing (possible optimization speed up)
-%             assign(wn1, r); % initial guessing (possible optimization speed up)
+            assign(wn1, rn1); % initial guessing (possible optimization speed up)
             
             options = sdpsettings('verbose',0,'solver',obj.solver_name,'usex0',1,'cachesolvers',1);
             
@@ -316,28 +250,28 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
             if(not(isempty(dmin)))
                 check_hi = dmin*ones(size(obj.datacheck.U(:,1),1),1);
                 %%%%%%%% steady state swarm constraints %%%%%%%%
-                for i=1:(size(obj.datacheck.U,1)/4)
-                    if(not(obj.datacheck.U((i-1)*4+1,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi((i-1)*4+1) || ...
-                            obj.datacheck.U((i-1)*4+2,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi((i-1)*4+2) ||...
-                            obj.datacheck.U((i-1)*4+3,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi((i-1)*4+3) ||...
-                            obj.datacheck.U((i-1)*4+4,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi((i-1)*4+4)))
-                        pluggable = false;
-                        return;
-                    end
+                
+                if(not(obj.datacheck.U(1,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi(1) || ...
+                        obj.datacheck.U(2,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi(2) ||...
+                        obj.datacheck.U(3,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi(3) ||...
+                        obj.datacheck.U(4,:)*((obj.datacheck.Hc/(eye(size(obj.datacheck.Phi,1))-obj.datacheck.Phi)*obj.datacheck.G+obj.datacheck.L)*w) >= check_hi(4)))
+                    pluggable = false;
+                    return;
                 end
+                
                 %%%%%%%%%%%%%%
                 
                 
                 %%%%%%% transient constraints (both vehicle and swarm ones) %%%
                 for k = 1:obj.datacheck.k0
-                    for i=1:(size(obj.datacheck.U,1)/4)
-                        if not((obj.datacheck.U((i-1)*4+1,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi((i-1)*4+1) - obj.datacheck.U((i-1)*4+1,:)*obj.datacheck.bk(:, :, k)*x ||...
-                                (obj.datacheck.U((i-1)*4+2,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi((i-1)*4+2) - obj.datacheck.U((i-1)*4+2,:)*obj.datacheck.bk(:, :, k)*x ||...
-                                (obj.datacheck.U((i-1)*4+3,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi((i-1)*4+3) - obj.datacheck.U((i-1)*4+3,:)*obj.datacheck.bk(:, :, k)*x ||...
-                                (obj.datacheck.U((i-1)*4+4,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi((i-1)*4+4) - obj.datacheck.U((i-1)*4+4,:)*obj.datacheck.bk(:, :, k)*x )
-                            pluggable = false;
-                            return;
-                        end
+                    
+                    if not((obj.datacheck.U(1,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi(1) - obj.datacheck.U(1,:)*obj.datacheck.bk(:, :, k)*x ||...
+                            (obj.datacheck.U(2,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi(2) - obj.datacheck.U(2,:)*obj.datacheck.bk(:, :, k)*x ||...
+                            (obj.datacheck.U(3,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi(3) - obj.datacheck.U(3,:)*obj.datacheck.bk(:, :, k)*x ||...
+                            (obj.datacheck.U(4,:)*(obj.datacheck.Rk(:, :, k)*w)) >= check_hi(4) - obj.datacheck.U(4,:)*obj.datacheck.bk(:, :, k)*x )
+                        pluggable = false;
+                        return;
+                        
                     end
                 end
                 %%%%%%%%

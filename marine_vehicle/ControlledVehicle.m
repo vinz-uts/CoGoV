@@ -8,6 +8,7 @@ classdef ControlledVehicle < handle
         cg % command governor
 		g % last computed references
         color % round color
+        planner % Planner of the vehicle
     end
     
     

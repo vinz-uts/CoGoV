@@ -24,13 +24,13 @@ addpath(genpath('../../tbxmanager'));   addpath('../../CG');
 
 vehicle_2DOF_model_2 % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle.init_position(-1,0); % set vehicle's initial position
+vehicle.init_position(0.5,0.5); % set vehicle's initial position
 
 %% Constraints
 % T*c ≤ b
-Vx = 2; % max abs of speed along x - [m/s]
-Vy = 2; % max abs of speed along y - [m/s]
-Tm = 100; % max abs of motor thrust - [N]
+Vx = 0.2; % max abs of speed along x - [m/s]
+Vy = 0.2; % max abs of speed along y - [m/s]
+Tm = 10; % max abs of motor thrust - [N]
 
 T = [ 1  0  0  0 ;
      -1  0  0  0 ;
@@ -69,7 +69,7 @@ ptp = Polar_trajectory_planner([xSamples(1:floor(length(xSamples)/2)); xSamples(
 
 Tf = 30; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
-r = [10,6]'; % position references
+r = [3,1]'; % position references
 N = ceil(Tf/Tc_cg); % simulation steps number
 
 %%%%% Data collection about optimization time %%%%%%%%
@@ -77,24 +77,24 @@ N = ceil(Tf/Tc_cg); % simulation steps number
 cputime =[];
 yalmiptime = [];
 figure(1);
-axis([-2 2 -2 2]);
-plot(ptp, 'k');
+axis([0 4 0 4]);
+
+% plot(ptp, 'k');
 hold on
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
-    [g,s] = vehicle.cg.compute_cmd(xa,ptp.compute_reference(vehicle.ctrl_sys.sys));
+%     [g,s] = vehicle.cg.compute_cmd(xa,ptp.compute_reference(vehicle.ctrl_sys.sys));
+    [g,s] = vehicle.cg.compute_cmd(xa,r);
     vehicle.ctrl_sys.sim(g,Tc_cg);
     cputime= [cputime,s.solvertime];
     yalmiptime=[yalmiptime,s.yalmiptime];
-    plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'.');
-    hold on 
+    plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'b.');
+    plot(r(1), r(2), 'bo');
+    plot(g(1),g(2), 'kx');
+    hold on
     drawnow
 end
 
-%% Plot Simulation Result
-% figure
-% plot_simulation(vehicle.ctrl_sys);
-% 
-% plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'.');
+
