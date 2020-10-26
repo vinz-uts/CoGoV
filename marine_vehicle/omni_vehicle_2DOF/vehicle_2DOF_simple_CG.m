@@ -44,8 +44,8 @@ T = [ 1  0  0  0 ;
 b = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
 
 % Reference weight matrix
-Psi = [ 1  0 ;
-        0  1 ];
+Psi = [ 1  100 ;
+        100  1 ];
     
 k0 = 10;
 
@@ -78,7 +78,7 @@ cputime =[];
 yalmiptime = [];
 figure(1);
 axis([0 4 0 4]);
-
+% 
 % plot(ptp, 'k');
 hold on
 for i=1:N

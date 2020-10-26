@@ -12,10 +12,22 @@ classdef Polar_trajectory_planner < handle
         counter % How much time the previous refence is still the same 
         p_old % Old position of vehicle 
         standstill % Dynamic value of old position freezing
+        sum
     end
     
     methods
         function obj = Polar_trajectory_planner(xSamples, ySamples, step, tol, clockwise, standstill)
+            if(~iscolumn(xSamples))
+                xSamples = xSamples';
+            end
+            if(~iscolumn(ySamples))
+                ySamples = ySamples';
+            end
+            if(~(xSamples(end)==xSamples(1)) || ~(ySamples(end)==ySamples(1)))
+                xSamples = [xSamples;xSamples(1)];
+                ySamples = [ySamples;ySamples(1)];
+            end
+            obj.sum=0;
             obj = obj.computeParameterization(xSamples, ySamples);
             obj.counter  = 0;
             switch nargin
@@ -24,6 +36,7 @@ classdef Polar_trajectory_planner < handle
                     obj.tol = 0.1;
                     obj.clockwise = true;
                     obj.standstill = 1000;
+                    
                 case 4
                     obj.step = step;
                     obj.tol = tol;
@@ -81,22 +94,42 @@ classdef Polar_trajectory_planner < handle
             if(norm(theta_p - theta_r) > obj.tol && obj.counter < obj.standstill)
                 r = obj.r_old;
                 theta = atan2(r(2)-p(2),r(1)-p(1));
+                
                 if(norm(p - obj.p_old) < 0.05)
                     obj.counter = obj.counter + 1; 
                 end
 
             else
+                
+                if(norm(theta_p - theta_r) > obj.tol && obj.counter >= obj.standstill)
+                    obj.sum = obj.sum + 0.09;
+                    theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
+                    theta_ref = theta_v;
+                    rho_ref = obj.evaluate(theta_ref);
+                    r = zeros(2, 1);
+                    [r(1), r(2)] = obj.polar2xy(rho_ref + obj.sum, theta_ref);
+                    theta = atan2(r(2)-p(2),r(1)-p(1));
+                    obj.r_old = r;
+                    obj.counter=0;
+                    return 
+                end
+                
                 theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
                 theta_ref = theta_v + obj.clockwise*obj.step;
                 if(theta_ref <= 0)
                     theta_ref = 2*pi+theta_ref;
                 end
-                rho_ref = obj.evaluate(theta_v + obj.step);
+%                 if(theta_ref >= 2*pi)
+%                     theta_ref = theta_ref-2*pi;
+%                 end
+                
+                rho_ref = obj.evaluate(theta_ref);
                 r = zeros(2, 1);
                 [r(1), r(2)] = obj.polar2xy(rho_ref, theta_ref);
                 theta = atan2(r(2)-p(2),r(1)-p(1));
                 obj.r_old = r;
                 obj.counter = 0;
+                obj.sum = 0;
             end
             obj.p_old = p;
         end
@@ -110,10 +143,10 @@ classdef Polar_trajectory_planner < handle
             theta = 0:0.01:2*pi + 0.01;
             rho = obj.evaluate(theta);
             [x, y] = obj.polar2xy(rho, theta);
-            plot(x, y, color);
+            plot(x, y, strcat(':', color));
             tf = ishold;
             hold on;
-            plot(obj.center(1), obj.center(2), strcat('o', color));
+%             plot(obj.center(1), obj.center(2), strcat('o', color));
 %             plot(obj.xSamples, obj.ySamples, 'x');
             if(not(tf))
                 hold off;

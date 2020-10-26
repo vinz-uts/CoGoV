@@ -41,7 +41,8 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 cnstr = [cnstr obj.U((i-1)*4+4,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+4)-mu*d((i-1)*4+4)];
                 cnstr = [cnstr sum( d((i-1)*4+(1:4)) ) <= 3];
             end
-            %%% Transient Constraints 
+
+            %%% Transient Constraints
             for k = 1:obj.k0
                 cnstr = [cnstr obj.T*(obj.Rk(:, :, k)*w) <= obj.gi - obj.T*obj.bk(:, :, k)*x];
                 for i=1:(size(obj.U,1)/4)
@@ -54,6 +55,8 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 end
             end
             
+       
+            
             % Objective function
             obj_fun = (r-g)'*obj.Psi*(r-g);
             
@@ -64,7 +67,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             
             ris = optimize(cnstr,obj_fun,options);
             g = double(g);
-            
+
             if(ris.problem ~= 0)
                 fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
                 g = [];

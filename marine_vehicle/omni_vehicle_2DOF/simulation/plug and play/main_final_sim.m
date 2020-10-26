@@ -14,7 +14,7 @@ vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,
 vehicle{2}.init_position(-0.2404,0.9290);
 
 vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{3}.init_position(0.1198,-0.1940);
+vehicle{3}.init_position(-0.9982,0.334);
 
 vehicle{4} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle{4}.init_position(3, 3);
@@ -33,19 +33,14 @@ vehicle{1}.planner.transform(1, [1, 0]);
 vehicle{2}.planner.transform(1, [-1, 0]);
 vehicle{3}.planner.transform(1, [0, 1]);
 
-hold on;
-plot(vehicle{1}.planner)
-plot(vehicle{2}.planner)
-plot(vehicle{3}.planner)
-axis equal
 
 %% Net configuration
 %   1
 %  / \
 % 2   3
 adj_matrix = [-1  1  1  0;
-    1 -1  0  0;
-    1  0 -1  0;
+    1 -1  1  0;
+    1  1 -1  0;
     0  0  0 -1];
 
 %% Vehicles constraints
@@ -85,7 +80,7 @@ vehicle{3}.color = colors(2);
 % vehicle{4}.color = colors(3);
 
 %% Simulation Colored Round CG
-Tf = 25; % simulation time
+Tf = 150; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 round = 1;
@@ -102,8 +97,12 @@ plaggable = false;
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2) + [2, 0]';
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2) + [2, 0]';
 r{3} =  vehicle{3}.ctrl_sys.sys.xi(1:2) + [2, 0]';
-r{4} = [-2,-2]';
+r_vect = [[-2,-2]', [3,0.5]', [-3,1]', [3,3]'];
+
+r{4} = r_vect(:,1);
 rN_tmp = r{4};
+
+reference4 = 1;
 
 %%%%% Binary variables usefull to PnP operation
 ask_to_freeze = [false, false, false, false]';
@@ -163,12 +162,10 @@ for t=1:NT
                     xa = [xa;x;xc];
                 end
             end
-            hold on;
             
             vehicle{4}.g = vehicle{4}.cg.compute_cmd(xa, r{4}, g_n);
             
-            plot(r{4}(1), r{4}(2), strcat(plot_color(4), 'o'));
-            plot(vehicle{4}.g(1),vehicle{4}.g(2), strcat(plot_color(4), 'x'));
+
         end
         
         if vehicle{i}.color == colors(round)
@@ -298,39 +295,51 @@ for t=1:NT
             
             if ~isempty(g)
                 vehicle{i}.g = g;
-                %%%% live plot %%%%
-                plot(r{i}(1), r{i}(2), strcat(plot_color(i), 'o'));
-                plot(g(1), g(2), strcat(plot_color(i), 'x'));
-                %%%%%%%%%%%%
             else
                 disp('WARN: old references');
                 t,i
             end
         end
     end
-    
-    
-    
+
     %%% When the vehicle N+1 has reached its first goal, the goal changes
-    if(norm(vehicle{4}.ctrl_sys.sys.xi(1:2) - [-2;-2]) < 0.1) 
-        r{4} = [3,0.5]';
+    if(norm(vehicle{4}.ctrl_sys.sys.xi(1:2) - r_vect(:,reference4)) < 0.1) 
+        reference4= reference4 +1 ;
+        
+        if(reference4 > 4)
+            reference4 = 1;
+        end
+        
+        r{4} = r_vect(:,reference4);
         rN_tmp = r{4};
     end
-    
+
     for i=1:N
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
     
     %%%%%%% live plot %%%%%%%
+    figure(1);
+    
+    axis equal
+    plot(vehicle{1}.planner)
+    hold on;
+    plot(vehicle{2}.planner)
+    plot(vehicle{3}.planner)
+    
     for k=1:N
         % Trajectory
-        figure(1);
-        %         axis([0 5 -4 4]);
-        hold on;
-        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '.'));
-        
+        %         axis([0 5 -4 4])
+        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
+        plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
+        %%%% live plot %%%%
+        plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
+        plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
+        %%%%%%%%%%%%
     end
+    
+    hold off;
     
     if(t==1)
         title('Frontal Collision Simulation');

@@ -63,8 +63,8 @@ classdef CommandGovernor < handle
 %             hold on;
 
             %%% Uncomment to plot constraints 
-%            plot(cnstr);
-%            hold on;
+           plot(cnstr);
+           hold on;
 
             % Objective function
             obj_fun = (r-w)'*obj.Psi*(r-w);
