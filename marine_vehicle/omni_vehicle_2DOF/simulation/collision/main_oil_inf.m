@@ -17,10 +17,10 @@ N = 2; % number of vehicles
 
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{1}.init_position(1.3,0);
+vehicle{1}.init_position(1,0.5);
 % Vehicle 2
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{2}.init_position(-1,1);
+vehicle{2}.init_position(0.1,0.2);
 
 
 %% Net configuration
@@ -35,7 +35,7 @@ adj_matrix = [-1  1 ;
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 200; % maximum distance between vehicles - [m]
-d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+d_min = 0.2; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
 % Vehicles constraints
 T_max = 100; % max abs of motor thrust - [N]                               
@@ -49,6 +49,8 @@ for i=1:N
     vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
+%             vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max);
+            % Uncomment to avoid collision
             vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
         end
     end
@@ -56,18 +58,35 @@ end
 %% Planner
 center = [0,0]';
 
-xSamples = [1, 0.8, 0.5, 0, -0.25, -0.6, -0.75 -1, -1, -0.5, 0, 0.35, 0.7]';
-ySamples = [0, 0.45, 0.7, 1, 0.9, 0.75, 0.3, 0, -0.5, -0.7, -1, -1, -0.45]';
+% Loading set of points 
+load('xSamples','xSamples');
+load('ySamples','ySamples');
+load('xSamples2','xSamples2');
+load('ySamples2','ySamples2');
+load('xSamples2a','xSamples2a');
+load('ySamples2a','ySamples2a');
+load('xSamples3','xSamples3');
+load('ySamples3','ySamples3');
 
 % xSamples = [1, 0, -1, 0]';
 % ySamples = [0, 1, 0, -1]';
 
-ptp1 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples,0.1,0.1,1,15);
+% We change dynamically the planner
+ptp1_1 = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
+ptp1_2 = Polar_trajectory_planner(xSamples2, ySamples2,0.1,0.1,1);
+ptp1_3 = Polar_trajectory_planner(xSamples2a, ySamples2a,0.1,0.1,1);
+ptp1_4 = Polar_trajectory_planner(xSamples3, ySamples3,0.1,0.1,1);
 
-ptp2 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples,0.1,0.1,-1,15);
+ptp1 = [ptp1_1,ptp1_2, ptp1_3 ,ptp1_4];
 
-pl(1) =  ptp1;
-pl(2) =  ptp2;
+ptp2_1 = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
+ptp2_2 = Polar_trajectory_planner(xSamples2, ySamples2,0.1,0.1,1);
+ptp2_3 = Polar_trajectory_planner(xSamples2a, ySamples2a,0.1,0.1,1);
+ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3,0.1,0.2,1,6);
+ptp2 = [ptp2_1,ptp2_2,ptp2_3,ptp2_4];
+
+pl(1) =  ptp1(1);
+pl(2) =  ptp2(1);
 
 % plot(ptp1, 'k');
 % plot(ptp2, 'r');
@@ -80,15 +99,17 @@ vehicle{2}.color = colors(2);
 
 
 %% Simulation Colored Round CG
-Tf = 75; % simulation time
+Tf = 50; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
+
+theta = 0:0.1:2*pi;
 
 NT = ceil(Tf/Tc_cg); % simulation steps number
 zerr = [0,0]';
 figure(1);
 hold on;
-
-axis([-3,3, -3,3]);
+% 
+% axis([0,1.5, 0,1.5]);
 
 dist = [];
 
@@ -110,10 +131,24 @@ for t=1:NT
                     xa = [xa;x;xc];
                 end
             end
+            if(t==95)
+                pl(1) = ptp1(2);
+                pl(2) = ptp2(2);
+            end
+            
+            if(t==130)
+                pl(1) = ptp1(3);
+                pl(2) = ptp2(3);
+            end
+            
+            if(t==150)
+                pl(1) = ptp1(4);
+                pl(2) = ptp2(4);
+            end
             
             plan = pl(i);
             
-            r= plan.compute_reference(vehicle{i}.ctrl_sys.sys,xa);
+            r= plan.compute_reference(vehicle{i}.ctrl_sys.sys);
             
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
@@ -133,19 +168,35 @@ for t=1:NT
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
+%     
+%     if(t==100)
+%         pl(1) = ptp1(2);
+%         pl(2) = ptp2(2);
+%     end
+%     
+%     if(t==NT/2)
+%         pl(1) = ptp1(3);
+%         pl(2) = ptp2(3);
+%     end
+
+figure(1);
+
+plot(pl(1), 'k');
+hold on;
+plot(pl(2), 'k');
+hold on;
+axis equal
+
+for k=1:N
+    % Trajectory
     
-    figure(1);  
-    plot(ptp1, 'k');
-    hold on;
     
-    axis equal
-    for k=1:N
-        % Trajectory
-        
-        
-        if(k==1)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), '-.r','LineWidth',0.8);
-            plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), 'or','MarkerFaceColor','r','MarkerSize',7);
+    if(k==1)
+        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), '-.r','LineWidth',0.8);
+        plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), 'or','MarkerFaceColor','r','MarkerSize',10);
+        x1 = vehicle{k}.ctrl_sys.sys.x(1,end) + d_min*cos(theta);
+        y1 = vehicle{k}.ctrl_sys.sys.x(2,end) + d_min*sin(theta);
+        plot(x1,y1,'--');
             plot(r(1), r(2), 'or');
             plot(vehicle{k}.g(1), vehicle{k}.g(2), 'xr');
             
@@ -153,7 +204,10 @@ for t=1:NT
         
         if(k==2)
             plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), '-.k','LineWidth',0.8);
-            plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), 'ok','MarkerFaceColor','k','MarkerSize',7);
+            plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), 'ok','MarkerFaceColor','k','MarkerSize',10);
+            x1 = vehicle{k}.ctrl_sys.sys.x(1,end) + d_min*cos(theta);
+            y1 = vehicle{k}.ctrl_sys.sys.x(2,end) + d_min*sin(theta);
+            plot(x1,y1,'--');
             plot(r(1), r(2), 'ok');
             plot(vehicle{k}.g(1), vehicle{k}.g(2), 'xk');
         end

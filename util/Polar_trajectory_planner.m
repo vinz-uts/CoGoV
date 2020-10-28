@@ -71,13 +71,60 @@ classdef Polar_trajectory_planner < handle
             obj.computeParameterization(x, y);
             obj.r_old = [];
         end
-        function [r, theta] = compute_reference(obj, sys)
+        
+        function r_recovery = compute_recovery(obj, sys,xa)
             % If the simulation has just started, the initial state is used
             if(isempty(sys.x))
                 p = [sys.xi(1); sys.xi(2)];
             else % use the current state
                 p = [sys.x(1, end); sys.x(2, end)];
             end
+            
+            %%% Number of Neighboors
+            num_neig = length(xa)/(length(sys.xi) + 2)-1;
+            
+            %%% Find nearest neighboor
+            closest_neig = 1;
+            min_dist = 500;
+            
+            for i=1:num_neig
+                pos = (i)*(length(sys.xi) + 2)+1;
+                if(norm(p-xa(pos:pos+1)) < min_dist)
+                    min_dist= norm(p-xa(pos:pos+1));
+                    closest_neig = pos;
+                end
+            end
+            
+            p_neig = xa(closest_neig:closest_neig+1);
+            
+            p_middle = [(p(1)+p_neig(1))/2;(p(2)+p_neig(2))/2];
+            
+            rho_tmp=norm(p-p_middle)+0.04;
+            
+            xSamples_tmp = [p_middle(1)+rho_tmp,p_middle(1), p_middle(1)-rho_tmp, p_middle(1)];
+            ySamples_tmp = [p_middle(2),p_middle(2)+rho_tmp, p_middle(2), p_middle(2)-rho_tmp];
+            circ = Polar_trajectory_planner(xSamples_tmp, ySamples_tmp);
+            
+
+            theta_tmp = circ.xy2polar(p(1),p(2));
+            
+            r_x = p_middle(1)+rho_tmp*cos(theta_tmp+pi/2);
+            r_y = p_middle(2)+rho_tmp*sin(theta_tmp+pi/2);
+            
+            r_recovery = [r_x;r_y];
+        end
+        
+        
+        function [r, theta] = compute_reference(obj, sys,xa)
+            
+            % If the simulation has just started, the initial state is used
+            if(isempty(sys.x))
+                p = [sys.xi(1); sys.xi(2)];
+            else % use the current state
+                p = [sys.x(1, end); sys.x(2, end)];
+            end
+            
+            
             % Initialize the previous reference if necessary
             if(isempty(obj.r_old))
                 theta_v = obj.xy2polar(p(1), p(2));
@@ -102,12 +149,13 @@ classdef Polar_trajectory_planner < handle
             else
                 
                 if(norm(theta_p - theta_r) > obj.tol && obj.counter >= obj.standstill)
-                    obj.sum = obj.sum + 0.09;
-                    theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
-                    theta_ref = theta_v;
-                    rho_ref = obj.evaluate(theta_ref);
-                    r = zeros(2, 1);
-                    [r(1), r(2)] = obj.polar2xy(rho_ref + obj.sum, theta_ref);
+%                     obj.sum = obj.sum + 0.011;
+%                     theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
+%                     theta_ref = theta_v;
+%                     rho_ref = obj.evaluate(theta_ref);
+%                     r = zeros(2, 1);
+%                     [r(1), r(2)] = obj.polar2xy(rho_ref + obj.sum, theta_ref);
+                    r = compute_recovery(obj, sys,xa);
                     theta = atan2(r(2)-p(2),r(1)-p(1));
                     obj.r_old = r;
                     obj.counter=0;
@@ -146,8 +194,8 @@ classdef Polar_trajectory_planner < handle
             plot(x, y, strcat(':', color));
             tf = ishold;
             hold on;
-%             plot(obj.center(1), obj.center(2), strcat('o', color));
-%             plot(obj.xSamples, obj.ySamples, 'x');
+            plot(obj.center(1), obj.center(2), strcat('o', color));
+            plot(obj.xSamples, obj.ySamples, 'x');
             if(not(tf))
                 hold off;
             end
