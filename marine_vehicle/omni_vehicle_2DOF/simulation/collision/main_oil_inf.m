@@ -72,17 +72,17 @@ load('ySamples3','ySamples3');
 % ySamples = [0, 1, 0, -1]';
 
 % We change dynamically the planner
-ptp1_1 = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
-ptp1_2 = Polar_trajectory_planner(xSamples2, ySamples2,0.1,0.1,1);
-ptp1_3 = Polar_trajectory_planner(xSamples2a, ySamples2a,0.1,0.1,1);
-ptp1_4 = Polar_trajectory_planner(xSamples3, ySamples3,0.1,0.1,1);
+ptp1_1 = Polar_trajectory_planner(xSamples, ySamples);
+ptp1_2 = Polar_trajectory_planner(xSamples2, ySamples2);
+ptp1_3 = Polar_trajectory_planner(xSamples2a, ySamples2a);
+ptp1_4 = Polar_trajectory_planner(xSamples3, ySamples3, 'rec_from_collision', false);
 
 ptp1 = [ptp1_1,ptp1_2, ptp1_3 ,ptp1_4];
 
-ptp2_1 = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
-ptp2_2 = Polar_trajectory_planner(xSamples2, ySamples2,0.1,0.1,1);
-ptp2_3 = Polar_trajectory_planner(xSamples2a, ySamples2a,0.1,0.1,1);
-ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3,0.1,0.2,1,6);
+ptp2_1 = Polar_trajectory_planner(xSamples, ySamples);
+ptp2_2 = Polar_trajectory_planner(xSamples2, ySamples2);
+ptp2_3 = Polar_trajectory_planner(xSamples2a, ySamples2a);
+ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3, 'recovery', 6, 'rec_from_collision', false);
 ptp2 = [ptp2_1,ptp2_2,ptp2_3,ptp2_4];
 
 pl(1) =  ptp1(1);
@@ -148,7 +148,7 @@ for t=1:NT
             
             plan = pl(i);
             
-            r= plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            r= plan.compute_reference(vehicle{i}, xa);
             
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             
