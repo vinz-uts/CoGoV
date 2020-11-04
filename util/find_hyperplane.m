@@ -4,7 +4,7 @@ function [aris,bris] = find_hyperplane(ve1,ve2,ve3,ve4,y)
 a = sdpvar(2,1);
 b = sdpvar(1,1); 
 r = sdpvar(1,1);
-rveh=0.5;
+rveh=0.3;
 
 V1 = a'*ve1 >= b -r +rveh;
 V2 = a'*ve2 >= b -r +rveh;

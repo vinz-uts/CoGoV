@@ -44,15 +44,21 @@ T = [ 1  0  0  0 ;
 b = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
 
 % Reference weight matrix
-Psi = [ 1  100 ;
-        100  1 ];
+Psi = [ 1  0;
+        0  1 ];
     
 k0 = 10;
 
-%%%%%% WARN: if not selected correct constraints matrix in vehicle_model.m
-Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
-              -F              f      ];
-L = zeros(4,2);
+%%%%%% WARN: use this for infin. norm constraint as usual
+% Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
+%               -F              f      ];
+% L = zeros(4,2);
+
+%%%%%% WARN: use for quadratic norm constraints 
+Hc = [ zeros(4,4)  zeros(4,2) ;
+        -F         f      ];
+L = zeros(6,2);
+
 vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 %%%%%%
 
@@ -86,7 +92,7 @@ for i=1:N
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
 %     [g,s] = vehicle.cg.compute_cmd(xa,ptp.compute_reference(vehicle.ctrl_sys.sys));
-    [g,s] = vehicle.cg.compute_cmd(xa,r);
+     [g,s] = vehicle.cg.compute_cmd(xa,r);
     vehicle.ctrl_sys.sim(g,Tc_cg);
     cputime= [cputime,s.solvertime];
     yalmiptime=[yalmiptime,s.yalmiptime];

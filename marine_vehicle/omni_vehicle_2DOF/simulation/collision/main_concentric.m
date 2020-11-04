@@ -62,9 +62,9 @@ ySamples = [0, 0.45, 0.7, 1, 0.9, 0.75, 0.3, 0, -0.5, -0.7, -1, -1, -0.45]';
 % xSamples = [1, 0, -1, 0]';
 % ySamples = [0, 1, 0, -1]';
 
-ptp1 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'recovery', 15);
+ptp1 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'recovery', 15, 'rec_from_collision', true);
 
-ptp2 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'clockwise', false, 'recovery', 15);
+ptp2 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'clockwise', false, 'recovery', 15, 'rec_from_collision', true);
 
 pl(1) =  ptp1;
 pl(2) =  ptp2;

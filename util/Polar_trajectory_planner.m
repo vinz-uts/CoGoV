@@ -16,10 +16,11 @@ classdef Polar_trajectory_planner < handle
         counter         % How much time the previous refence is still the same 
         p_old           % Old position of vehicle 
         standstill      % Dynamic value of old position freezing
-        rec_tolerance
-        recovery_from_collision
-        rho_step
-        sum
+        rec_tolerance   % How many times you tolerate to stay still
+        recovery_from_collision   % To differentiate between Circular or Rho recovery
+        rho_step        % In case of Rho recovery this is the delta_rho to add 
+        sum             % In case of Rho recovery this is how many times delta_rho has been added
+        is_recovery_active % If the recovery reference has been reached or not
     end
     
     methods
@@ -34,7 +35,7 @@ classdef Polar_trajectory_planner < handle
             %             reached (in rad)
             % clockwise - used to specify the direction of travel on the curve
             % recovery  - if specified activate the recovery procedure
-            %             if the veIf the vehicle does not move and requests 
+            %             if the vehicle does not move and requests 
             %             a new reference for standstill times, then the
             %             procedure is started.
             % rec_tolerance - tolerance used to understand if the vehicle
@@ -69,8 +70,9 @@ classdef Polar_trajectory_planner < handle
             obj.clockwise = 1;
             obj.sum = 0;
             obj.counter  = 0;
-            obj.rec_tolerance = 0.01;
+            obj.rec_tolerance = 0.005;
             obj.rho_step = 0.011;
+            obj.is_recovery_active = false;
             %%%%%%%%%%%%
             
             %%%%%%% Variable arguments management %%%%%%%
@@ -128,7 +130,7 @@ classdef Polar_trajectory_planner < handle
             %%%%%%%
         end
         
-        function r_recovery = compute_recovery(~, sys, xa)
+        function r_recovery = compute_recovery(obj, sys, xa)
             % Extract current state
             p = sys.ctrl_sys.sys.xi(1:2);
             
@@ -153,17 +155,42 @@ classdef Polar_trajectory_planner < handle
             %%%%% Computation of the recovery referrence
             p_middle = [(p(1)+p_neig(1))/2;(p(2)+p_neig(2))/2];
             
-            rho_tmp = norm(p-p_middle) + 0.04;
+            rho_tmp = norm(p-p_middle)*2;
             
             theta_tmp = atan2(p(2) - p_middle(2), p(1) - p_middle(1));
             if(theta_tmp < 0)
                 theta_tmp = 2*pi + theta_tmp;
             end
+%             
+            r_x_pos = p_middle(1)+rho_tmp*cos(theta_tmp+(pi/2+0.069));
+            r_y_pos = p_middle(2)+rho_tmp*sin(theta_tmp+(pi/2+0.069));
+            r_tmp_pos = [r_x_pos;r_y_pos];
             
-            r_x = p_middle(1)+rho_tmp*cos(theta_tmp+pi/2);
-            r_y = p_middle(2)+rho_tmp*sin(theta_tmp+pi/2);
+            r_x_neg = p_middle(1)+rho_tmp*cos(theta_tmp-(pi/2+0.069));
+            r_y_neg = p_middle(2)+rho_tmp*sin(theta_tmp-(pi/2+0.069));
+            r_tmp_neg = [r_x_neg;r_y_neg];   
             
-            r_recovery = [r_x;r_y];
+%             if(norm(obj.r_old-[r_x_pos;r_y_pos])< norm(obj.r_old-[r_x_neg;r_y_neg]))
+%                 r_recovery = [r_x_pos;r_y_pos];
+%             else
+%                 r_recovery = [r_x_neg;r_y_neg];
+%             end
+            
+            if(norm(p(2)-obj.r_old(2)) > norm(p(1)-obj.r_old(1))) % I prefer vertical minim.
+                if(norm(p(2)-r_y_pos)>norm(p(2)-r_y_neg))
+                     r_recovery = r_tmp_pos;
+                else
+                    r_recovery = r_tmp_neg;
+                end
+            else % I prefer orizontal mini.
+                if(norm(p(1)-r_x_pos)>norm(p(1)-r_x_neg))
+                    r_recovery = r_tmp_pos;
+                else
+                    r_recovery = r_tmp_neg;
+                end
+            end
+            
+            
         end
         
         
@@ -192,20 +219,29 @@ classdef Polar_trajectory_planner < handle
             % The reference is not updated if the current one has not been reached
             % If tehe vehicle does not reach the reference for too long a
             % recovery procedure is activated
-            if(norm(theta_p - theta_r) > obj.tol && (obj.counter < obj.standstill || not(obj.is_recovery_active())) )
+            
+            if(obj.is_recovery_active)
+                r = obj.r_old;
+                if(norm(p(1) - r(1)) < obj.tol || norm(p(2) - r(2))< obj.tol )
+                    obj.is_recovery_active = false;
+                    obj.counter=0;
+                end
+           
+            elseif(norm(theta_p - theta_r) > obj.tol && (obj.counter < obj.standstill || not(obj.is_recovery_enabled())) )
                 %%% Reference does not change
                 r = obj.r_old;
                 %%%%
                 
                 %%% Increase counter for recovery management
-                if(obj.is_recovery_active() && norm(p - obj.p_old) < obj.rec_tolerance)
+                if(obj.is_recovery_enabled() && norm(p - obj.p_old) < obj.rec_tolerance)
                     obj.counter = obj.counter + 1; 
                 end
 
-            elseif(obj.is_recovery_active() && obj.counter >= obj.standstill)
+            elseif(obj.is_recovery_enabled() && obj.counter >= obj.standstill)
                 
                 if(obj.recovery_from_collision) % anticollision recovery
                     r = compute_recovery(obj, sys, xa);
+                    obj.is_recovery_active = true; 
                     
                 else % recovery with higher references
 
@@ -320,7 +356,7 @@ classdef Polar_trajectory_planner < handle
             y = rho.*(sin(theta)) + obj.center(2);
         end
         
-        function res = is_recovery_active(obj)
+        function res = is_recovery_enabled(obj)
             % Check if recovery is active
             res = not(obj.standstill == -1);
         end

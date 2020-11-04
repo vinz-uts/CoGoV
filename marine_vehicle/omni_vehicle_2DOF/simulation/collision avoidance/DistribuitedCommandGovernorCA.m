@@ -11,6 +11,7 @@ classdef DistribuitedCommandGovernorCA < CommandGovernor
     
     
     methods
+        
         function obj = DistribuitedCommandGovernorCA(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,solver)
             % DistribuitedCommandGovernor - Constructor
             % Create an instance of a Distribuited Command Governor.
@@ -53,10 +54,6 @@ classdef DistribuitedCommandGovernorCA < CommandGovernor
             %%%
             
             for k = 1:obj.k0
-                %%%% old code uncomment to test
-%                 xk = obj.Phi*xk+obj.G*w;  % xk = (obj.Phi)^k * x0 + sum(i=1,k-1) (obj.Phi^i*obj.G)*w
-%                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
-                %%%%
                 %%%% HERE CA CONSTRAINTS
                 xk = obj.T*obj.bk(:, :, k)*x + obj.Rk(:, :, k)*w - obj.L*w; 
                 
@@ -64,13 +61,6 @@ classdef DistribuitedCommandGovernorCA < CommandGovernor
                 cnstr = [cnstr ay'*xk(1:2) <= (by-rr)];
                 
                 for i=1:(size(obj.U,1)/4)
-                    %%%% old code uncomment to test
-%                     cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Hc*xk+obj.L*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1)]; % se i vicini
-%                     cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2)];
-%                     cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3)];
-%                     cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Hc*xk+obj.L*w)) >=  obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4)];
-%                   %%%%%%%
-
                     cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1) - obj.U((i-1)*4+1,:)*obj.bk(:, :, k)*x]; % se i vicini
                     cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2) - obj.U((i-1)*4+2,:)*obj.bk(:, :, k)*x];
                     cnstr = [cnstr (obj.U((i-1)*4+3,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+3)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+3) - obj.U((i-1)*4+3,:)*obj.bk(:, :, k)*x];

@@ -35,7 +35,7 @@ adj_matrix = [-1  1 ;
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
 d_max = 200; % maximum distance between vehicles - [m]
-d_min = 0.03; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+d_min = 0.05; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
 % Vehicles constraints
 T_max = 100; % max abs of motor thrust - [N]                               
@@ -49,9 +49,9 @@ for i=1:N
     vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
-            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max);
+%             vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max);
             % Uncomment to avoid collision
-%             vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
+            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
         end
     end
 end
@@ -77,18 +77,18 @@ load('ySamplescirc2','ySamplescirc2');
 % ySamples = [0, 1, 0, -1]';
 
 % We change dynamically the planner
-ptp1_1 = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
-ptp1_2 = Polar_trajectory_planner(xSamples2, ySamples2,0.1,0.1,1);
-ptp1_3 = Polar_trajectory_planner(xSamples2a, ySamples2a,0.1,0.1,1);
-ptp1_4 = Polar_trajectory_planner(xSamples3, ySamples3,0.1,0.1,1);
-ptp1_5 = Polar_trajectory_planner(xSamplescirc1, ySamplescirc1,0.1,0.1,1);
+ptp1_1 = Polar_trajectory_planner(xSamples, ySamples);
+ptp1_2 = Polar_trajectory_planner(xSamples2, ySamples2);
+ptp1_3 = Polar_trajectory_planner(xSamples2a, ySamples2a);
+ptp1_4 = Polar_trajectory_planner(xSamples3, ySamples3);
+ptp1_5 = Polar_trajectory_planner(xSamplescirc1, ySamplescirc1,'tolerance',0.1,'recovery',15,'rec_from_collision',true);
 ptp1 = [ptp1_1,ptp1_2, ptp1_3 ,ptp1_4,ptp1_5];
 
-ptp2_1 = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
-ptp2_2 = Polar_trajectory_planner(xSamples2, ySamples2,0.1,0.1,1);
-ptp2_3 = Polar_trajectory_planner(xSamples2a, ySamples2a,0.1,0.1,1);
-ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3,0.1,0.2,1,6);
-ptp2_5 = Polar_trajectory_planner(xSamplescirc2, ySamplescirc2,0.1,0.1,1);
+ptp2_1 = Polar_trajectory_planner(xSamples, ySamples);
+ptp2_2 = Polar_trajectory_planner(xSamples2, ySamples2);
+ptp2_3 = Polar_trajectory_planner(xSamples2a, ySamples2a);
+ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3,'tolerance',0.2,'recovery',6);
+ptp2_5 = Polar_trajectory_planner(xSamplescirc2, ySamplescirc2,'tolerance',0.1 ,'recovery',15,'rec_from_collision',true);
 ptp2_5.transform(1,[0.01,0]);
 ptp2 = [ptp2_1,ptp2_2,ptp2_3,ptp2_4,ptp2_5];
 
@@ -161,7 +161,7 @@ for t=1:NT
             
             plan = pl(i);
             
-            r= plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            r= plan.compute_reference(vehicle{i},xa);
             
             g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
             

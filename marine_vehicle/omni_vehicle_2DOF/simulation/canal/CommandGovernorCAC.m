@@ -1,4 +1,4 @@
-classdef CommandGovernorCA < handle
+classdef CommandGovernorCAC < handle
     %% COMMAND GOVERNOR
     %  Command Governor computes the nearest reference g to r that statify
     %  the constrains.
@@ -23,7 +23,7 @@ classdef CommandGovernorCA < handle
     
     
     methods
-        function obj = CommandGovernorCA(Phi,G,Hc,L,T,gi,Psi,k0,solver)
+        function obj = CommandGovernorCAC(Phi,G,Hc,L,T,gi,Psi,k0,solver)
             % CommandGovernor - Constructor
             % Create an instance of a Command Governor
             obj.Phi = Phi;
@@ -44,7 +44,7 @@ classdef CommandGovernorCA < handle
         end
         
         
-        function [g, ris, ak,bk] = compute_cmd(obj,x,r,ve1,ve2,ve3,ve4)
+        function [g, ris] = compute_cmd(obj,x,r,ve)
             % compute_cmd - calculate the reference g2
             % Calculate the nearest reference g to r start from initial
             % conditions x.
@@ -53,27 +53,33 @@ classdef CommandGovernorCA < handle
             
 %             a = sdpvar(2,1);
 %             b = sdpvar(1,1);
-            rr =sdpvar(1,1);
+           
 %             
             
             cnstr = obj.T*(obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w <= obj.gi;
             xk = x;
             
-            [aris,bris] = find_hyperplane(ve1,ve2,ve3,ve4,x(1:2)); %how to identify position of vehicle ?                                 
-                                                                   
-            a=aris;
-            b=bris; 
-            
+            if(not(isempty(ve)))
+                 rr =sdpvar(1,1);
+                [aris,bris] = find_hyperplane(ve(:,1),ve(:,2),ve(:,3),ve(:,4),x(1:2)); %how to identify position of vehicle 
+                a=aris;
+                b=bris;
+            end
+
             
             
             for k = 1:obj.k0
                 xk = obj.Phi*xk+obj.G*w;
                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
-                cnstr = [cnstr a'*xk(1:2) <= (b-rr)];
+                
+                if(not(isempty(ve)))
+                    cnstr = [cnstr a'*xk(1:2) <= (b-rr)];
+                end
             end
             
-            cnstr = [cnstr a'*w <= (b)];
-            
+            if(not(isempty(ve)))
+                cnstr = [cnstr a'*w <= (b)];
+            end
 %             V1 = a'*ve1 >= b +rr;
 %             V2 = a'*ve2 >= b +rr;
 %             V3 = a'*ve3 >= b +rr;
@@ -89,8 +95,7 @@ classdef CommandGovernorCA < handle
             
             ris = solvesdp(cnstr,obj_fun,options);
             g = double(w);
-            ak = a;
-            bk = b; 
+
             
             if(ris.problem ~= 0)
                 fprintf(...

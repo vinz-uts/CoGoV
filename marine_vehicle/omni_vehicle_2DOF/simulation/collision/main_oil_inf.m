@@ -49,12 +49,14 @@ for i=1:N
     vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
-%             vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max);
+            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max);
             % Uncomment to avoid collision
-            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
+%             vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
         end
     end
 end
+
+
 %% Planner
 center = [0,0]';
 
@@ -82,7 +84,7 @@ ptp1 = [ptp1_1,ptp1_2, ptp1_3 ,ptp1_4];
 ptp2_1 = Polar_trajectory_planner(xSamples, ySamples);
 ptp2_2 = Polar_trajectory_planner(xSamples2, ySamples2);
 ptp2_3 = Polar_trajectory_planner(xSamples2a, ySamples2a);
-ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3, 'recovery', 6, 'rec_from_collision', false);
+ptp2_4 = Polar_trajectory_planner(xSamples3, ySamples3, 'recovery', 20, 'rec_from_collision', false);
 ptp2 = [ptp2_1,ptp2_2,ptp2_3,ptp2_4];
 
 pl(1) =  ptp1(1);

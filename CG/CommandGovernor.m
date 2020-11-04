@@ -48,24 +48,44 @@ classdef CommandGovernor < handle
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % conditions x.
+            
             w = sdpvar(length(r),1);
-            cnstr = obj.T*(obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w <= obj.gi;
+            
+            %%% Uncomment for normal behaviour of CG
+%             cnstr = obj.T*(obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w <= obj.gi;
+%             xk = x;
+%
+%             for k = 1:obj.k0
+%                 xk = obj.Phi*xk+obj.G*w;
+%                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
+%             end
+            
+            %%% Uncomment to test quadratic norm constraints
+            
+            vect =((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L));
+            vect = vect(end-1:end,end-1:end);
+            
+            cnstr = norm(vect*w)^2 <= 10 ;
+            
             xk = x;
             
             for k = 1:obj.k0
                 xk = obj.Phi*xk+obj.G*w;
-                cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
+                vect = obj.Hc*xk;
+                vect = vect(end-1:end);
+                cnstr = [cnstr norm(vect)^2 <= 10];
             end
             
-            %%% Uncomment to plot Convex Hull of constraits sets 
-%             hulla = hull(cnstr);
-%             plot(hull);
-%             hold on;
-
-            %%% Uncomment to plot constraints 
-           plot(cnstr);
-           hold on;
-
+            
+            %%% Uncomment to plot constraints
+            plot(cnstr);
+            hold on;
+            
+            %%% Uncomment to plot Convceex Hull of constraits sets
+            %             hulla = hull(cnstr);
+            %             plot(hull);
+            %             hold on;
+            
             % Objective function
             obj_fun = (r-w)'*obj.Psi*(r-w);
             % Solver options
@@ -87,13 +107,13 @@ classdef CommandGovernor < handle
     
     methods (Access = protected)
         function check_solver(obj, solver_name)
-            % check_solver - check if solver is available 
-            % If not present, default solver is setted 
-
+            % check_solver - check if solver is available
+            % If not present, default solver is setted
+            
             obj.solver_name = obj.default_solver;
-
+            
             [solvers,found] = getavailablesolvers(0);
-
+            
             for i = 1:length(solvers)
                 if (strcmpi(solvers(i).tag,solver_name)==1 && found(i))
                     obj.solver_name = solver_name;
@@ -147,6 +167,6 @@ classdef CommandGovernor < handle
                 end
             end
         end % private methods
-    end  
+    end
 end
 

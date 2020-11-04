@@ -25,9 +25,15 @@ vehicle{4}.init_position(3, 3);
 xSamples = 1.2*[1, 0, -1, 0]';
 ySamples = 1.2*[0, 1, 0, -1]';
 
-vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,1);
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples,0.1,0.1,-1);
+vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples);
+vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples,'recovery',20,'clockwise',false,'rec_from_collision',true);
 vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples);
+
+r_vect = [-2,-2,3,0.5,-3,1,3,3];
+
+vehicle{4}.planner = Board_planner(r_vect,20);
+
+
 
 vehicle{1}.planner.transform(1, [1, 0]);
 vehicle{2}.planner.transform(1, [-1, 0]);
@@ -80,7 +86,7 @@ vehicle{3}.color = colors(2);
 % vehicle{4}.color = colors(3);
 
 %% Simulation Colored Round CG
-Tf = 150; % simulation time
+Tf = 200; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 round = 1;
@@ -97,17 +103,13 @@ plaggable = false;
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2) + [2, 0]';
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2) + [2, 0]';
 r{3} =  vehicle{3}.ctrl_sys.sys.xi(1:2) + [2, 0]';
-r_vect = [[-2,-2]', [3,0.5]', [-3,1]', [3,3]'];
-
-r{4} = r_vect(:,1);
-rN_tmp = r{4};
-
-reference4 = 1;
-
+r{4} = r{3};
+% rN_tmp = r{4};
 %%%%% Binary variables usefull to PnP operation
 ask_to_freeze = [false, false, false, false]';
 ask_to_plug = [false, false, false, false];
 pluggable = false;
+virtual = [false, false, false, false]; 
 
 %%%%% Virtual references
 r_stari = [];
@@ -122,7 +124,7 @@ dist3 = [];
 for t=1:NT
     for i=1:N
         
-        if(isempty(vehicle{4}.color))
+        if(isempty(vehicle{4}.color) && i == 4)
             for ii = 1:N-1
                 if(not(isempty(find(ask_to_plug == 1, 1)))) % one plug at time
                     break;
@@ -161,6 +163,10 @@ for t=1:NT
                     xc = vehicle{j}.ctrl_sys.xci; % controller current state
                     xa = [xa;x;xc];
                 end
+            end
+            
+            if(not(virtual(4)))
+                 r{4} = vehicle{4}.planner.compute_reference(vehicle{4},xa);
             end
             
             vehicle{4}.g = vehicle{4}.cg.compute_cmd(xa, r{4}, g_n);
@@ -202,9 +208,10 @@ for t=1:NT
                 end
             end
             
-            if(not(i == N))
-                r{i} = vehicle{i}.planner.compute_reference(vehicle{i}.ctrl_sys.sys);
-            end
+%             if(not(i == N))
+%                 r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
+%             end
+
             x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
@@ -219,6 +226,10 @@ for t=1:NT
                 end
             end
             
+            if(not(virtual(i)))
+                r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
+            end
+
             if(norm(vehicle{i}.ctrl_sys.sys.xi(1:2) - vehicle{N}.ctrl_sys.sys.xi(1:2)) < d_min && not(i == 4)) % validity check
                 warning('Collided');
             end
@@ -242,9 +253,7 @@ for t=1:NT
                 vehicle{i}.cg.add_swarm_cnstr(N, 'anticollision', d_min);
                 vehicle{N}.cg.add_swarm_cnstr(i, 'anticollision', d_min);
                 fprintf('Communication between vehicle %d and %d added.\n', i, N);
-                
-                r{i} =  vehicle{i}.planner.compute_reference(vehicle{i}.ctrl_sys.sys);
-                r{N} = rN_tmp;
+
                 ask_to_plug(i) = false;
                 pluggable = false;
                 r_stari = [];
@@ -265,6 +274,13 @@ for t=1:NT
                         xa = [xa;x;xc];
                     end
                 end
+                
+                r{i} =  vehicle{i}.planner.compute_reference(vehicle{i},xa);
+                r{4} =  vehicle{4}.planner.compute_reference(vehicle{4},[]);
+                
+                virtual(4)= false;
+                virtual(i)= false;
+%                 r{N} = rN_tmp;               
                 %%% If they are not pluggable we procede finding a virtual
                 %%% reference and freezing references for neig of
                 
@@ -275,7 +291,9 @@ for t=1:NT
                     disp('Virtual references computation');
                     [r_stari,r_starn1] = vehicle{i}.cg.compute_virtual_cmd(r{i},vehicle{N}.ctrl_sys.sys.xi(1:2), g_n, [], d_min);
                     ask_to_freeze(vehicle{i}.cg.neigh) = true;
-                    rN_tmp = r{N};
+                    virtual(4) = true; 
+                    virtual(i) = true; 
+%                     rN_tmp = r{N};
                     vehicle{4}.color = [];
                 end
                 r{i} = r_stari;
@@ -303,16 +321,16 @@ for t=1:NT
     end
 
     %%% When the vehicle N+1 has reached its first goal, the goal changes
-    if(norm(vehicle{4}.ctrl_sys.sys.xi(1:2) - r_vect(:,reference4)) < 0.1) 
-        reference4= reference4 +1 ;
-        
-        if(reference4 > 4)
-            reference4 = 1;
-        end
-        
-        r{4} = r_vect(:,reference4);
-        rN_tmp = r{4};
-    end
+%     if(norm(vehicle{4}.ctrl_sys.sys.xi(1:2) - r_vect(:,reference4)) < 0.1) 
+%         reference4= reference4 +1 ;
+%         
+%         if(reference4 > 4)
+%             reference4 = 1;
+%         end
+%         
+%         r{4} = r_vect(:,reference4);
+%         rN_tmp = r{4};
+%     end
 
     for i=1:N
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
