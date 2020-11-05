@@ -55,7 +55,7 @@ classdef DistribuitedCommandGovernorCA < CommandGovernor
             
             for k = 1:obj.k0
                 %%%% HERE CA CONSTRAINTS
-                xk = obj.T*obj.bk(:, :, k)*x + obj.Rk(:, :, k)*w - obj.L*w; 
+                xk = obj.bk(:, :, k)*x + obj.Rk(:, :, k)*w - obj.L*w; 
                 
                 cnstr = [cnstr obj.T*(obj.Rk(:, :, k)*w) <= obj.gi - obj.T*obj.bk(:, :, k)*x];
                 cnstr = [cnstr ay'*xk(1:2) <= (by-rr)];

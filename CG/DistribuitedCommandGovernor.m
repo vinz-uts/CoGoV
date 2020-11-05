@@ -23,7 +23,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
         end
         
         
-        function [g, ris] = compute_cmd(obj,x,r,g_n)
+        function [g, ris] = compute_cmd(obj,x,r,g_n, cloud_points)
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % global conditions x and g_n reference for the other systems.
@@ -32,8 +32,17 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             b = binvar(size(obj.U,1)*obj.k0,1);
             d = binvar(size(obj.U,1),1);
             mu = 10000;
+            
             %%% Steady State Constraints 
             cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
+           
+            if(nargin > 4)  % Obstacle avoidance
+                slack_var = sdpvar(1,1);
+                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.5, cloud_points);
+                
+                cnstr = [cnstr ay'*g <= (by)];
+            end
+            
             for i=1:(size(obj.U,1)/4)
                 cnstr = [cnstr obj.U((i-1)*4+1,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+1)-mu*d((i-1)*4+1)];
                 cnstr = [cnstr obj.U((i-1)*4+2,:)*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) >= obj.hi((i-1)*4+2)-mu*d((i-1)*4+2)];
@@ -45,6 +54,12 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             %%% Transient Constraints
             for k = 1:obj.k0
                 cnstr = [cnstr obj.T*(obj.Rk(:, :, k)*w) <= obj.gi - obj.T*obj.bk(:, :, k)*x];
+                
+                if(nargin > 4)  % Obstacle avoidance
+                    xk = obj.bk(:, :, k)*x + obj.Rk(:, :, k)*w - obj.L*w;
+                    cnstr = [cnstr ay'*xk(1:2) <= (by-slack_var)];
+                end
+                
                 for i=1:(size(obj.U,1)/4)
                     cnstr = [cnstr (obj.U((i-1)*4+1,:)*(obj.Rk(:, :, k)*w)) >= obj.hi((i-1)*4+1)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+1) - obj.U((i-1)*4+1,:)*obj.bk(:, :, k)*x]; % se i vicini
                     cnstr = [cnstr (obj.U((i-1)*4+2,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+2)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+2) - obj.U((i-1)*4+2,:)*obj.bk(:, :, k)*x];
@@ -52,11 +67,11 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     cnstr = [cnstr (obj.U((i-1)*4+4,:)*(obj.Rk(:, :, k)*w)) >=  obj.hi((i-1)*4+4)-mu*b((k-1)*size(obj.U,1)+(i-1)*4+4) - obj.U((i-1)*4+4,:)*obj.bk(:, :, k)*x];
                     
                     cnstr = [cnstr sum( b((k-1)*size(obj.U,1)+(i-1)*4+(1:4)) ) <= 3];
+                    
+                    
                 end
             end
-            
-       
-            
+
             % Objective function
             obj_fun = (r-g)'*obj.Psi*(r-g);
             
@@ -74,6 +89,48 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             end
             
             clear('yalmip');
+        end
+        
+        function [a_ris, b_ris, diagnos] = find_hyperplane_cg(obj, y, d_min, cloud_points)
+            % Function useful to find hyperplane to separate obstacle and vehicles
+            % position
+            a = sdpvar(2,1);
+            b = sdpvar(1,1);
+            r = sdpvar(1,1);
+            
+            V = [];
+            % Constraints to keep all the points on one side
+            for i = 1:length(cloud_points(1, :))
+                V = [V, a'*cloud_points(:, i) >= b - r + d_min];
+            end
+            
+            % and the veichle to the other side of the hyperplane
+            V = [V, a'*y <= b + r];
+            
+            % Restrinction on the number of possible hyperplane
+            V = [V, norm(a,2) <= 1];
+            
+            tmpx = cloud_points(1,:) - y(1);
+            tmpy = cloud_points(2,:) - y(2);
+            tmp = [tmpx; tmpy];
+            
+            % Calculation of the closest point
+            norm_vect = vecnorm(tmp);
+            [m, i] = min(norm_vect);
+            
+            % Optimization
+            opt = sdpsettings('verbose',0,'solver','gurobi');
+            diagnos = optimize(V, norm(r,2) + norm(a'*cloud_points(:, i) - b), opt); %+norm(a'*vx-b)
+            
+            a_ris = double(a);
+            b_ris = double(b);
+            
+            if (norm(a_ris) == 0 && b_ris == 0)
+                warning('Hyperplane Not Found');
+            end
+            
+            % hy = hyperplane(aris,bris);
+            % plot(hy);
         end
     end
 end

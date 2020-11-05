@@ -11,48 +11,29 @@ vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,
 
 vehicle.init_position(0,0); % set vehicle's initial position
 
-%% Constraints
-% T*c ≤ b
+%% Vehicles constraints
+% Vehicles swarm position constraints
+% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
+% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
+d_max = 20; % maximum distance between vehicles - [m]
+d_min = 0.1; % minimum distance between vehicles - [m]
+
+% Vehicles input/speed constraints
 Vx = 0.5; % max abs of speed along x - [m/s]
 Vy = 0.5; % max abs of speed along y - [m/s]
-Tm = 20; % max abs of motor thrust - [N]
+T_max = 20; % max abs of motor thrust - [N]
+x_max = 3; % max value of x position
 
-T = [ 1  0  0  0 ;
-     -1  0  0  0 ;
-      0  1  0  0 ;
-      0 -1  0  0 ;
-      0  0  1  0 ;
-      0  0 -1  0 ;
-      0  0  0  1 ;
-      0  0  0 -1 ];
-  
-b = [Vx,Vx,Vy,Vy,Tm,Tm,Tm,Tm]';
 
-% Reference weight matrix
-Psi = [ 1  0;
-        0  1 ];
-    
-k0 = 10;
+%% Command Governor parameters
+Psi = 0.01*eye(2); % vehicle's references weight matrix
+k0 = 10; % prediction horizon
 
-%%%%%% WARN: use this for infin. norm constraint as usual
-Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
-              -F              f      ];
-L = zeros(4,2);
-
-%%%%%% WARN: use for quadratic norm constraints 
-% Hc = [ zeros(4,4)  zeros(4,2) ;
-%         -F         f      ];
-% L = zeros(6,2);
-
-vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
-%%%%%%
-
-%% Command Governor
-vehicle.cg = CommandGovernorCAC(Phi,G,Hc,L,T,b,Psi,k0);
-
+%% Dynamic Command Governor
+vehicle.cg = DynamicDistribuitedCommandGovernor(1,Phi,G,Hc,L,Psi,k0, 'gurobi');
+vehicle.cg.add_vehicle_cnstr('position',[x_max,50],'thrust',T_max,'speed',[Vx,Vy]);
 
 %% Obstacle Initialization
-
 %%% Rectangular orizontal obstacle 
 v1a = [1,2]';
 v2a = [1,1]';
@@ -110,12 +91,14 @@ for i=1:N
     
     if(isempty(obseen))
         ver = [];
+        [g,s] = vehicle.cg.compute_cmd(xa,r,[]);
     else
         ver = obseen.vertices;
+        [g,s] = vehicle.cg.compute_cmd(xa,r,[],ver);
     end
     
     %%% Compute vehicle command given reference 
-    [g,s] = vehicle.cg.compute_cmd(xa,r,ver);
+    
     vehicle.ctrl_sys.sim(g,Tc_cg);
 
     
