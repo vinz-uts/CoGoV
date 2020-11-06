@@ -83,10 +83,10 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             ris = optimize(cnstr,obj_fun,options);
             g = double(g);
 
-            if(ris.problem ~= 0)
-                fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
-                g = [];
-            end
+%             if(ris.problem ~= 0)
+%                 fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
+%                 g = [];
+%             end
             
             clear('yalmip');
         end

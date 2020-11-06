@@ -9,6 +9,8 @@ classdef ControlledVehicle < handle
 		g % last computed references
         color % round color
         planner % Planner of the vehicle
+        pending_plugin
+        freeze
     end
     
     
@@ -19,6 +21,8 @@ classdef ControlledVehicle < handle
             % >> vehicle = ControlledVehicle(ctrl_sys)
             %    Initialize a controlled vehicle with initial conditions
             obj.ctrl_sys = ctrl_sys;
+            obj.pending_plugin = -1;
+            obj.freeze = 0;
         end
         
         

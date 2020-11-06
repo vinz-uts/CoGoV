@@ -16,9 +16,9 @@ for i=1:N
 end
 
 %% Communication constraints 
-R   = 5; % maximum distance of communications - [m]
-R__ = 3; % maximum distance of connectivity - [m]
-R_  = 2; % minimum distance for cooperation - [m]
+R   = 7; % maximum distance of communications - [m]
+R__ = 6; % maximum distance of connectivity - [m]
+R_  = 5; % minimum distance for cooperation - [m]
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
@@ -56,7 +56,7 @@ NT = ceil(Tf/Tc_cg); % simulation steps number
 % References
 for i=1:N
     r{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N)]';
-endif plugable_status == 'virtual_cmd'
+end
 
 round = 1;
 for t=1:NT 
@@ -64,38 +64,48 @@ for t=1:NT
         if vehicle{i}.color == colors(round)        
             % Receive msg from v{j} : ||v{i}-v{j}||∞ ≤ R
             for j=1:N
-                d_ij = norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{i}.ctrl_sys.sys.xi(1:2));
-                if i~=j && d_ij <= R
-                    if d_ij > R__
-                        % Remove constraints and send plug-out message to v{j}
-                        vehicle{i}.cg.remove_swarm_cnstr(j);
-                        vehicle{j}.cg.remove_swarm_cnstr(i);
-                    end
-                    if d_ij <= R_ && vehicle{i}.pending_plugin ~= -1 % ||v{i}-v{j}||∞ ≤ R && not already pending plug-in request
-                        vehicle{i}.pending_plugin = j;
-                        % Send plug-in request message to v{j}
-                        pluggable_status = vehicle{j}.cg.check(vehicle{j}.ctrl_sys.sys.xi(1:2),vehicle{i}.ctrl_sys.sys.xi(1:2),vehicle{j}.g,vehicle{i}.g,d_min,d_max);
-                        if pluggable_status == 'success'
-                            vehicle{j}.pending_plugin = -1;
-                            vehicle{j}.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
-                            vehicle{i}.add_swarm_cnstr(j,'anticollision',d_min);
-                            % Send unfreeze request to v{j} neighbours
-                            for k = vehicle{j}.cg.neigh
-                                vehicle{k}.freeze = 0;
-                            end
-                        else
-                            [g_j,g_i] = vehicle{j}.cg.compute_virtual_cmd(r{j},r{i},vehicle{i}.g,dmax,dmin);
-                            if isempty(g_i)
-                                pluggable_status = 'failed'; % sended from v{j}
+                if i~=j
+                    d_ij = norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{j}.ctrl_sys.sys.xi(1:2));
+                    if d_ij <= R
+                        if d_ij > R__ && ~isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh))
+                            fprintf('Unplugged: %d - %d',i,j);
+                            % Remove constraints and send plug-out message to v{j}
+                            vehicle{i}.cg.remove_swarm_cnstr(j);
+                            vehicle{j}.cg.remove_swarm_cnstr(i);
+                        end
+                        if d_ij <= R_ && vehicle{i}.pending_plugin == -1 % ||v{i}-v{j}||∞ ≤ R && not already pending plug-in request
+                            fprintf('Plug-in request from %d to %d',i,j);
+                            vehicle{i}.pending_plugin = j;
+                            % Send plug-in request message to v{j}
+                            pluggable_status = vehicle{j}.cg.check(vehicle{j}.ctrl_sys.sys.xi(1:2),vehicle{i}.ctrl_sys.sys.xi(1:2),vehicle{j}.g,vehicle{i}.g,d_min,d_max);
+                            if pluggable_status %== 'success'
+                                fprintf('Plug-in success: %d - %d',i,j);
                                 vehicle{j}.pending_plugin = -1;
-                            else
-                                pluggable_status = 'virtual_cmd';
-                                vehicle{j}.pending_plugin = i;
-                                vehicle{j}.g = g_j; % Setted from v{j} after computation
-                                vehicle{i}.g = g_i;
-                                % Send freeze request to v{j} neighbours
+                                vehicle{j}.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
+                                vehicle{i}.add_swarm_cnstr(j,'anticollision',d_min);
+                                % Send unfreeze request to v{j} neighbours
                                 for k = vehicle{j}.cg.neigh
-                                    vehicle{k}.freeze = 1;
+                                    vehicle{k}.freeze = 0;
+                                end
+                            else
+                                g_n = [];
+                                for k = vehicle{j}.cg.neigh
+                                    g_n = [g_n; vehicle{k}.g];
+                                end
+                                [g_j,g_i] = vehicle{j}.cg.compute_virtual_cmd(r{j},vehicle{i}.ctrl_sys.sys.xi(1:2),g_n,[],d_min);
+                                if isempty(g_i)
+                                    pluggable_status = 'failed'; % sended from v{j}
+                                    vehicle{j}.pending_plugin = -1;
+                                else
+                                    fprintf('Unpluggable: %d - %d. Need a virtual command ',i,j);
+                                    pluggable_status = 'virtual_cmd';
+                                    vehicle{j}.pending_plugin = i;
+                                    vehicle{j}.g = g_j; % Setted from v{j} after computation
+                                    vehicle{i}.g = g_i;
+                                    % Send freeze request to v{j} neighbours
+                                    for k = vehicle{j}.cg.neigh
+                                        vehicle{k}.freeze = 1;
+                                    end
                                 end
                             end
                         end
@@ -104,7 +114,8 @@ for t=1:NT
             end
             if vehicle{i}.pending_plugin ~= -1 % Already pending plug-in request
                 pluggable_status = vehicle{vehicle{i}.pending_plugin}.cg.check(vehicle{vehicle{i}.pending_plugin}.ctrl_sys.sys.xi(1:2),vehicle{i}.ctrl_sys.sys.xi(1:2),vehicle{vehicle{i}.pending_plugin}.g,vehicle{i}.g,d_min,d_max);
-                if pluggable_status == 'success'
+                if pluggable_status %== 'success'
+                    fprintf('Plug-in success: %d - %d',i,j);
                     vehicle{j}.pending_plugin = -1;
                     vehicle{j}.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
                     vehicle{i}.add_swarm_cnstr(j,'anticollision',d_min);
@@ -127,11 +138,11 @@ for t=1:NT
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
                 if ~isempty(g)
                     vehicle{i}.g = g;
-                    cputime= [cputime,s.solvertime];
-                    yalmiptime=[yalmiptime,s.yalmiptime];
-                else
-                    disp('WARN: old references');
-                    t,i
+                    %cputime= [cputime,s.solvertime];
+                    %yalmiptime=[yalmiptime,s.yalmiptime];
+                %else
+                    %disp('WARN: old references');
+                    %t,i
                 end
             end
         end
@@ -141,4 +152,21 @@ for t=1:NT
         vehicle{i}.ctrl_sys.sim(r{i},Tc_cg);
     end
     round = rem(round,length(colors))+1;
+end
+
+
+%% Plot Vehicles trajectory and velocities
+for i=1:N
+    % Trajectory
+    figure(1);  hold on;
+    plot(vehicle{i}.ctrl_sys.sys.x(1,:),vehicle{i}.ctrl_sys.sys.x(2,:),'.');
+    plot(vehicle{i}.ctrl_sys.sys.x(1,end),vehicle{i}.ctrl_sys.sys.x(2,end),'o');
+    % Position
+    figure(2); hold on;
+    subplot(6,1,(i-1)*2+1);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(1,:));
+    subplot(6,1,(i-1)*2+2);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(2,:));
+    % Velocities
+    figure(3); hold on;
+    subplot(6,1,(i-1)*2+1);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(3,:));
+    subplot(6,1,(i-1)*2+2);  plot(vehicle{i}.ctrl_sys.sys.t,vehicle{i}.ctrl_sys.sys.x(4,:));
 end
