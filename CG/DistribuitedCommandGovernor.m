@@ -23,7 +23,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
         end
         
         
-        function [g, ris] = compute_cmd(obj,x,r,g_n, cloud_points)
+        function [g, ris, hype] = compute_cmd(obj,x,r,g_n, cloud_points)
             % compute_cmd - calculate the reference g.
             % Calculate the nearest reference g to r start from initial
             % global conditions x and g_n reference for the other systems.
@@ -32,14 +32,15 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             b = binvar(size(obj.U,1)*obj.k0,1);
             d = binvar(size(obj.U,1),1);
             mu = 10000;
+            hype = [];
             
             %%% Steady State Constraints 
             cnstr = obj.T*((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w) <= obj.gi;
            
             if(nargin > 4)  % Obstacle avoidance
                 slack_var = sdpvar(1,1);
-                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.5, cloud_points);
-                
+                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.3, r, cloud_points);
+                hype = hyperplane(ay, by);
                 cnstr = [cnstr ay'*g <= (by)];
             end
             
@@ -83,20 +84,22 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             ris = optimize(cnstr,obj_fun,options);
             g = double(g);
 
-%             if(ris.problem ~= 0)
-%                 fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
-%                 g = [];
-%             end
+            if(ris.problem ~= 0)
+                fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
+                g = [];
+            end
             
             clear('yalmip');
         end
         
-        function [a_ris, b_ris, diagnos] = find_hyperplane_cg(obj, y, d_min, cloud_points)
+        function [a_ris, b_ris, diagnos] = find_hyperplane_cg(obj, y, d_min, g, cloud_points)
             % Function useful to find hyperplane to separate obstacle and vehicles
             % position
             a = sdpvar(2,1);
             b = sdpvar(1,1);
-            r = sdpvar(1,1);
+%             r = sdpvar(1,1);
+            rr = sdpvar(1,1);
+            r = 0;
             
             V = [];
             % Constraints to keep all the points on one side
@@ -105,26 +108,44 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             end
             
             % and the veichle to the other side of the hyperplane
-            V = [V, a'*y <= b + r];
+            V = [V, a'*y <= b];
             
             % Restrinction on the number of possible hyperplane
             V = [V, norm(a,2) <= 1];
-            
+                    
+            % Calculation of the closest point
             tmpx = cloud_points(1,:) - y(1);
             tmpy = cloud_points(2,:) - y(2);
             tmp = [tmpx; tmpy];
-            
-            % Calculation of the closest point
             norm_vect = vecnorm(tmp);
             [m, i] = min(norm_vect);
             
+            minX = min(cloud_points(1, :));
+            maxX = max(cloud_points(1, :));
+            minY = min(cloud_points(2, :));
+            maxY = max(cloud_points(2, :));
+            
+            delta = 0.1;
+            if(not(g(1) >= minX && g(1) <= maxX && y(1) + delta >= minX && y(1) - delta <= maxX || ...
+                    g(2) >= minY && g(2) <= maxY && y(2) + delta>= minY && y(2) - delta <= maxY))
+                
+                V = [V, a'*g <= b + rr];
+%                 V = [V, -0.1 <= r <= 0.1];
+                ob_fun = norm(r,2) + norm(rr) + norm(a'*cloud_points(:, i) - b) ;
+            else
+                
+%                 V = [V, -0.1 <= r <= 0.1];
+                ob_fun = norm(r,2)  + norm(a'*cloud_points(:, i) - b);
+            end
+            
             % Optimization
             opt = sdpsettings('verbose',0,'solver','gurobi');
-            diagnos = optimize(V, norm(r,2) + norm(a'*cloud_points(:, i) - b), opt); %+norm(a'*vx-b)
+            diagnos = optimize(V, ob_fun, opt);
             
             a_ris = double(a);
             b_ris = double(b);
             
+            fprintf('rr=%d\n r = %d\n', double(rr), double(r));
             if (norm(a_ris) == 0 && b_ris == 0)
                 warning('Hyperplane Not Found');
             end

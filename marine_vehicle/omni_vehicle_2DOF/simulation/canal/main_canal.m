@@ -60,7 +60,7 @@ ob4 = Obstacle(v1c,v2c,v3c,v4c);
 ob5 = Obstacle(v1b,v2b,v3b,v4b);
 
 ob1.move_obstacle(-1, 16);
-ob2.move_obstacle(-2.5, 6.5);
+ob2.move_obstacle(-2.2, 7.5);
 ob3.move_obstacle(-0.5, 3);
 ob4.move_obstacle(-4, 10);
 ob5.move_obstacle(-1.5, 12);
@@ -74,8 +74,9 @@ N = ceil(Tf/Tc_cg); % simulation steps number
 
 limitLeft=-3; 
 limitRight=3;
+hy=[];
 
-r_vision = 2.5;
+r_vision = 3;
 %%%%% Data collection about optimization time %%%%%%%%
 % names are self-explanatory
 
@@ -89,12 +90,13 @@ for i=1:N
     
     obseen = ob1.seen_obstacles(x(1:2), r_vision, oblist);
     
+    
     if(isempty(obseen))
         ver = [];
         [g,s] = vehicle.cg.compute_cmd(xa,r,[]);
     else
         ver = obseen.vertices;
-        [g,s] = vehicle.cg.compute_cmd(xa,r,[],ver);
+        [g,s,hy] = vehicle.cg.compute_cmd(xa,r,[],ver);
     end
     
     %%% Compute vehicle command given reference 
@@ -107,6 +109,8 @@ for i=1:N
     %%% Plotting section 
     plot_2Dof_vehicle(vehicle, r, r_vision, 'RangeAxis', [-10 10 0 20]);
     hold on;
+    plot(g(1),g(2),'xk');
+    plot(hy);
     plot(ob1,'.-b');
     plot(ob2,'.-b');
     plot(ob3,'.-b');
