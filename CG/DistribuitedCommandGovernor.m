@@ -80,7 +80,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             assign(g, r); % initial guessing (possible optimization speed up)
             
             options = sdpsettings('verbose',0,'solver',obj.solver_name,'usex0',1,'cachesolvers',1);
-            
+           
             ris = optimize(cnstr,obj_fun,options);
             g = double(g);
 

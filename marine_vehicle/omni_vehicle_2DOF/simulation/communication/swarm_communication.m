@@ -34,7 +34,7 @@ T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 1000*eye(2); % vehicle's references weight matrix
-k0 = 15; % prediction horizon
+k0 = 25; % prediction horizon
 
 %% Dynamic Command Governor
 for i=1:N
@@ -58,23 +58,24 @@ plot_color = ['b', 'g', 'k', 'r', 'm'];
 
 
 % References
-for i=2:3
+for i=1:N
     r{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N) ]' +20 ;
     r_{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N) ]' +20 ;
 end
-r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
-r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
-r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
-
-r_{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
-r_{4} = vehicle{1}.ctrl_sys.sys.xi(1:2);
-r_{5} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+% r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+% r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
+% r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
+% 
+% r_{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+% r_{4} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+% r_{5} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 
 round = 1;
 for t=1:NT
     for i=1:N
         if vehicle{i}.color == colors(round)
             % Receive msg from v{j} : ||v{i}-v{j}||∞ ≤ R
+           
             for j=1:N
                 if i~=j
                     d_ij = norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{j}.ctrl_sys.sys.xi(1:2));
@@ -85,67 +86,86 @@ for t=1:NT
                             vehicle{i}.cg.remove_swarm_cnstr(j);
                             vehicle{j}.cg.remove_swarm_cnstr(i);
                         end
+                        
+                        if d_ij <= R__ && d_ij > R_
+                        end
                         % Should be considerated an else condition if i ask
                         % to plug with a vehicle already in a
                         % pending_plugin
-                        if vehicle{i}.pending_plugin ~= -1 && isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)) % Already pending plug-in request
-                            pluggable_status = vehicle{vehicle{i}.pending_plugin}.cg.check([vehicle{vehicle{i}.pending_plugin}.ctrl_sys.sys.xi; vehicle{vehicle{i}.pending_plugin}.ctrl_sys.xci],...
-                                [vehicle{i}.ctrl_sys.sys.xi; vehicle{i}.ctrl_sys.xci],vehicle{vehicle{i}.pending_plugin}.g,vehicle{i}.g,[],d_min);
-                            if pluggable_status %== 'success'
-                                fprintf('Plug-in success: %d - %d \n',i,j);
-                                vehicle{j}.pending_plugin = -1;
-                                r{j} = r_{j};
-                                r{i} = r_{i};
-                                vehicle{j}.cg.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
-                                vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
-                                % Send unfreeze request to v{j} neighbours
-                                for k = vehicle{j}.cg.neigh
-                                    vehicle{k}.pending_plugin = -1;
-                                    vehicle{k}.freeze = 0;
-                                end
-                            end
-                        end
-                        if d_ij <= R_ && vehicle{i}.pending_plugin == -1 && isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)) % ||v{i}-v{j}||∞ ≤ R && not already pending plug-in request
+                        if d_ij <= R_ && ... 
+                                vehicle{i}.pending_plugin == -1 && ... 
+                                vehicle{j}.pending_plugin == -1 && ... %%% No plugin pending
+                                isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)) %  ||v{i}-v{j}||∞ ≤ R && not already pending plug-in request
                             fprintf('Plug-in request from %d to %d \n',i,j);
                             vehicle{i}.pending_plugin = j;
                             % Send plug-in request message to v{j}
+                            vehicle{j}.pending_plugin = i;
                             pluggable_status = vehicle{j}.cg.check([vehicle{j}.ctrl_sys.sys.xi; vehicle{j}.ctrl_sys.xci],...
                                 [vehicle{i}.ctrl_sys.sys.xi; vehicle{i}.ctrl_sys.xci],vehicle{j}.g,vehicle{i}.g,[],d_min);
-                            if pluggable_status %== 'success'
+                            
+                            if pluggable_status %== 'success'                                
                                 fprintf('Plug-in success: %d - %d \n',i,j);
                                 vehicle{j}.pending_plugin = -1;
                                 vehicle{i}.pending_plugin = -1;
                                 vehicle{j}.cg.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
                                 vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
-                                r{j} = r_{j};
-                                r{i} = r_{i};
-                                % Send unfreeze request to v{j} neighbours
-                                for k = vehicle{j}.cg.neigh
-                                    vehicle{k}.pending_plugin = -1;
-                                    vehicle{k}.freeze = 0;  % 1 is eq to frez.
-                                end
+%                                 % Send unfreeze request to v{j} neighbours
+%                                 for k = vehicle{j}.cg.neigh
+%                                     vehicle{k}.pending_plugin = -1;
+%                                     vehicle{k}.freeze = 0;  % 1 is eq to frez.
+%                                 end
                             else
+                                fprintf('Unpluggable: %d - %d. Need a virtual command \n',i,j);
+                                pluggable_status = 'virtual_cmd';
                                 g_n = [];
-                                
                                 for k = vehicle{j}.cg.neigh
                                     g_n = [g_n; vehicle{k}.g];
                                 end                              
                                 [g_j,g_i] = vehicle{j}.cg.compute_virtual_cmd(vehicle{j}.g,vehicle{i}.ctrl_sys.sys.xi(1:2),g_n,[],d_min);
-                                fprintf('Unpluggable: %d - %d. Need a virtual command \n',i,j);
-                                pluggable_status = 'virtual_cmd';
-                                vehicle{j}.pending_plugin = i;
                                 r{j} = g_j;
                                 r{i} = g_i;
                                 % Send freeze request to v{j} neighbours
                                 for k = vehicle{j}.cg.neigh
+                                    vehicle{k}.pending_plugin = j;
+                                    vehicle{k}.freeze = 1;
+                                end
+                                for k = vehicle{i}.cg.neigh
                                     vehicle{k}.pending_plugin = i;
                                     vehicle{k}.freeze = 1;
                                 end
                             end
                         end
+                        
+                         if d_ij <= R_ && ... 
+                                vehicle{i}.pending_plugin == j && vehicle{i}.freeze == 0 && ...
+                                isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)) 
+                                pluggable_status = vehicle{j}.cg.check([vehicle{j}.ctrl_sys.sys.xi; vehicle{j}.ctrl_sys.xci],...
+                                    [vehicle{i}.ctrl_sys.sys.xi; vehicle{i}.ctrl_sys.xci],vehicle{j}.g,vehicle{i}.g,[],d_min);
+                                if pluggable_status %== 'success'
+                                    fprintf('Plug-in success: %d - %d \n',i,j);
+                                    vehicle{j}.pending_plugin = -1;
+                                    vehicle{i}.pending_plugin = -1;
+                                    vehicle{j}.cg.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
+                                    vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
+                                    r{j} = r_{j};
+                                    r{i} = r_{i};
+                                    % Send unfreeze request to v{j} neighbours
+                                    for k = vehicle{j}.cg.neigh
+                                        vehicle{k}.pending_plugin = -1;
+                                        vehicle{k}.freeze = 0;
+                                    end
+                                    for k = vehicle{i}.cg.neigh
+                                        vehicle{k}.pending_plugin = -1;
+                                        vehicle{k}.freeze = 0;
+                                    end
+                                end                        
+                         end
+                        
                     end
                 end
             end
+            
+            
             
             if vehicle{i}.freeze == 0
                 x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
@@ -157,6 +177,10 @@ for t=1:NT
                     x = vehicle{k}.ctrl_sys.sys.xi; % vehicle{j} current state
                     xc = vehicle{k}.ctrl_sys.xci; % controller{j} current state
                     xa = [xa;x;xc];
+                end
+                if(t==132 && i==2)
+                    [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
+                    display("superatoooo");
                 end
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
                 if ~isempty(g)
