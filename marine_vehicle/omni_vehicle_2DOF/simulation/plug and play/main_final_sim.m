@@ -17,7 +17,7 @@ vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,
 vehicle{3}.init_position(-0.9982,0.334);
 
 vehicle{4} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{4}.init_position(3, 3);
+vehicle{4}.init_position(-1.5, -1.5);
 % end
 
 %% Planners for Circular Path Following
@@ -31,7 +31,7 @@ vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples);
 
 r_vect = [-2,-2,3,0.5,-3,1,3,3];
 
-vehicle{4}.planner = Board_planner(r_vect,20);
+vehicle{4}.planner = LinePlanner(r_vect, 'recovery', 20);
 
 
 

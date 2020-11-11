@@ -1,4 +1,4 @@
-classdef Polar_trajectory_planner < handle
+classdef Polar_trajectory_planner < Planner
     % A planner for general but closed trajectories
     % Used to recreate a trajectory starting from a generic number of points. 
     % Samples must be supplied from right to left (clockwise). 
@@ -9,23 +9,24 @@ classdef Polar_trajectory_planner < handle
         xSamples        % Samples along the x axis
         ySamples        % Samples along the x axis
         center          % Trajectory polar origin
-        r_old           % Old reference
+%         r_old           % Old reference
         clockwise       % If 1 the trajectory is traveled clockwise, otherwise counterclockwise
-        tol             % Tolerance ([m]) used to understand if the vehicle has reached the reference
+%         tol             % Tolerance ([m]) used to understand if the vehicle has reached the reference
         step            % Variation in radians used to get the next reference
-        counter         % How much time the previous refence is still the same 
-        p_old           % Old position of vehicle 
-        standstill      % Dynamic value of old position freezing
-        rec_tolerance   % How many times you tolerate to stay still
-        recovery_from_collision   % To differentiate between Circular or Rho recovery
-        rho_step        % In case of Rho recovery this is the delta_rho to add 
+%         counter         % How much time the previous refence is still the same 
+%         p_old           % Old position of vehicle 
+%         standstill      % Dynamic value of old position freezing
+%         rec_tolerance   % How many times you tolerate to stay still
+%         recovery_from_collision   % To differentiate between Circular or Rho recovery
+        rho_step        % In case of Rho recovery this is the delta_rho to add
         sum             % In case of Rho recovery this is how many times delta_rho has been added
-        is_recovery_active % If the recovery reference has been reached or not
+%         is_recovery_active % If the recovery reference has been reached or not
     end
     
     methods
         
         function obj = Polar_trajectory_planner(xSamples, ySamples, varargin)
+            
             % Class constructor
             % xSamples - x coordinate of the samples
             % ySamples - y coordinate of the samples
@@ -46,6 +47,8 @@ classdef Polar_trajectory_planner < handle
             %                      circular trajectory)
             %                      (false recovery with higher references)
             
+            obj = obj@Planner(varargin{:});
+            
             %%%%%% Input management %%%%%%
             if(~iscolumn(xSamples))
                 xSamples = xSamples';
@@ -65,25 +68,18 @@ classdef Polar_trajectory_planner < handle
             
             %%%%%% Default values %%%%%%%%%
             obj.step = 0.1;
-            obj.standstill = -1;
             obj.tol = 0.1;
             obj.clockwise = 1;
-            obj.sum = 0;
-            obj.counter  = 0;
-            obj.rec_tolerance = 0.005;
             obj.rho_step = 0.011;
-            obj.is_recovery_active = false;
             %%%%%%%%%%%%
             
             %%%%%%% Variable arguments management %%%%%%%
-            validnames = {'step_size', 'tolerance', 'clockwise', 'recovery',...
-                          'rec_tolerance', 'rec_from_collision', 'rho_step'};
+            validnames = {'step_size', 'tolerance', 'clockwise', 'rho_step'};
             
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
             
             for name = params
-                validatestring(name{:}, validnames); % raise an Exception if the name is not valid
                 pos = strcmp(name{:}, params);
                 switch name{:}
                     case validnames{1}
@@ -100,13 +96,7 @@ classdef Polar_trajectory_planner < handle
                         else
                             obj.clockwise = -1;
                         end
-                     case validnames{4}
-                         obj.standstill =  values{pos};
-                    case validnames{5}
-                        obj.rec_tolerance =  values{pos};
-                    case validnames{6}
-                        obj.recovery_from_collision =  values{pos};
-                    case validnames{7}
+                    case validnames{4}
                         obj.rho_step =  values{pos};
                 end
             end   
@@ -130,158 +120,54 @@ classdef Polar_trajectory_planner < handle
             %%%%%%%
         end
         
-        function r_recovery = compute_recovery(obj, sys, xa)
-            % Extract current state
-            p = sys.ctrl_sys.sys.xi(1:2);
-            
-            %%% Number of Neighboors
-            num_neig = length(xa)/(length(sys.ctrl_sys.sys.xi) + length(sys.ctrl_sys.xci)) -1;
-            
-            %%% Find nearest neighboor
-            closest_neig = 1;
-            min_dist = 500;
-            
-            for i=1:num_neig
-                pos = (i)*(length(sys.ctrl_sys.sys.xi) + 2) + 1;
-                if(norm(p-xa(pos:pos+1)) < min_dist)
-                    min_dist= norm(p-xa(pos:pos+1));
-                    closest_neig = pos;
-                end
-            end
-            
-            %%% Coordinates extraction
-            p_neig = xa(closest_neig:closest_neig + 1);
-            
-            %%%%% Computation of the recovery referrence
-            p_middle = [(p(1)+p_neig(1))/2;(p(2)+p_neig(2))/2];
-            
-            rho_tmp = norm(p-p_middle)*2;
-            
-            theta_tmp = atan2(p(2) - p_middle(2), p(1) - p_middle(1));
-            if(theta_tmp < 0)
-                theta_tmp = 2*pi + theta_tmp;
-            end
-%             
-            r_x_pos = p_middle(1)+rho_tmp*cos(theta_tmp+(pi/2+0.069));
-            r_y_pos = p_middle(2)+rho_tmp*sin(theta_tmp+(pi/2+0.069));
-            r_tmp_pos = [r_x_pos;r_y_pos];
-            
-            r_x_neg = p_middle(1)+rho_tmp*cos(theta_tmp-(pi/2+0.069));
-            r_y_neg = p_middle(2)+rho_tmp*sin(theta_tmp-(pi/2+0.069));
-            r_tmp_neg = [r_x_neg;r_y_neg];   
-            
-%             if(norm(obj.r_old-[r_x_pos;r_y_pos])< norm(obj.r_old-[r_x_neg;r_y_neg]))
-%                 r_recovery = [r_x_pos;r_y_pos];
-%             else
-%                 r_recovery = [r_x_neg;r_y_neg];
-%             end
-            
-            if(norm(p(2)-obj.r_old(2)) > norm(p(1)-obj.r_old(1))) % I prefer vertical minim.
-                if(norm(p(2)-r_y_pos)>norm(p(2)-r_y_neg))
-                     r_recovery = r_tmp_pos;
-                else
-                    r_recovery = r_tmp_neg;
-                end
-            else % I prefer orizontal mini.
-                if(norm(p(1)-r_x_pos)>norm(p(1)-r_x_neg))
-                    r_recovery = r_tmp_pos;
-                else
-                    r_recovery = r_tmp_neg;
-                end
-            end
-            
-            
+        function r = initialize_old_reference(obj, p)
+            theta_v = obj.xy2polar(p(1), p(2));
+            rho_ref = obj.evaluate(theta_v);
+            r = zeros(2, 1);
+            [r(1), r(2)] = obj.polar2xy(rho_ref, theta_v);
         end
         
+        function [r, theta] = compute_referecence_when_not_reached(obj, p)
+            r = obj.r_old;
+            theta = atan2(r(2) - p(2),r(1) - p(1));
+        end
         
-        function [r, theta] = compute_reference(obj, sys, xa)
-            % Function used to compute a reference
-            % sys - ControlledSystem
-            % xa  - Augmented state
-            
-            % Extract current state
-            p = sys.ctrl_sys.sys.xi(1:2);
-            
-            if(isempty(obj.p_old))
-                obj.p_old = p;
-            end
-            
-            % Initialize the previous reference if necessary
-            if(isempty(obj.r_old))
-                theta_v = obj.xy2polar(p(1), p(2));
-                rho_ref = obj.evaluate(theta_v);
-                obj.r_old = zeros(2, 1);
-                [obj.r_old(1), obj.r_old(2)] = obj.polar2xy(rho_ref, theta_v);
-            end       
-            
+        function res = reference_reached(obj, p)
             theta_p = obj.xy2polar(p(1), p(2));
             theta_r = obj.xy2polar(obj.r_old(1), obj.r_old(2));
-            % The reference is not updated if the current one has not been reached
-            % If tehe vehicle does not reach the reference for too long a
-            % recovery procedure is activated
-            
-            if(obj.is_recovery_active)
-                r = obj.r_old;
-                if(norm(p(1) - r(1)) < obj.tol || norm(p(2) - r(2))< obj.tol )
-                    obj.is_recovery_active = false;
-                    obj.counter=0;
-                end
-           
-            elseif(norm(theta_p - theta_r) > obj.tol && (obj.counter < obj.standstill || not(obj.is_recovery_enabled())) )
-                %%% Reference does not change
-                r = obj.r_old;
-                %%%%
-                
-                %%% Increase counter for recovery management
-                if(obj.is_recovery_enabled() && norm(p - obj.p_old) < obj.rec_tolerance)
-                    obj.counter = obj.counter + 1; 
-                end
-
-            elseif(obj.is_recovery_enabled() && obj.counter >= obj.standstill)
-                
-                if(obj.recovery_from_collision) % anticollision recovery
-                    r = compute_recovery(obj, sys, xa);
-                    obj.is_recovery_active = true; 
-                    
-                else % recovery with higher references
-
-                    obj.sum = obj.sum + obj.rho_step;
-                    theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
-                    theta_ref = theta_v;
-                    rho_ref = obj.evaluate(theta_ref);
-                    r = zeros(2, 1);
-                    [r(1), r(2)] = obj.polar2xy(rho_ref + obj.sum, theta_ref);
-                end
-                
-                    obj.counter = 0;
-            else % update the reference normally
-                
-                % Compute old reference in polar coordinate
-                theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
-                
-                % move clockwise or counterclockwise
-                theta_ref = theta_v + obj.clockwise*obj.step;
-                if(theta_ref <= 0)
-                    theta_ref = 2*pi + theta_ref;
-                end
-                rho_ref = obj.evaluate(theta_ref);
-                
-                % express the new reference in cartesian coordinate
-                r = zeros(2, 1);
-                [r(1), r(2)] = obj.polar2xy(rho_ref, theta_ref);
-                
-                % reset interanl state for recovery management
-                obj.counter = 0;
-                obj.sum = 0;
-            end
-            % compute angle reference
-            theta = atan2(r(2)-p(2),r(1)-p(1));
-            
-            % save state
-            obj.r_old = r;
-            obj.p_old = p;
+            res = norm(theta_p - theta_r) <= obj.tol;
         end
         
+        function [r, theta] = compute_standard_reference(obj, p)
+            % Compute old reference in polar coordinate
+            theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
+            
+            % move clockwise or counterclockwise
+            theta_ref = theta_v + obj.clockwise*obj.step;
+            if(theta_ref <= 0)
+                theta_ref = 2*pi + theta_ref;
+            end
+            rho_ref = obj.evaluate(theta_ref);
+            
+            % express the new reference in cartesian coordinate
+            r = zeros(2, 1);
+            [r(1), r(2)] = obj.polar2xy(rho_ref, theta_ref);
+            theta = atan2(r(2)-p(2),r(1)-p(1));
+            obj.sum = 0;
+        end
+        
+        function [r, theta] = compute_alternative_recovery(obj, sys, xa)
+            p = sys.ctrl_sys.sys.xi(1:2);
+            
+            obj.sum = obj.sum + obj.rho_step;
+            theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
+            theta_ref = theta_v;
+            rho_ref = obj.evaluate(theta_ref);
+            r = zeros(2, 1);
+            [r(1), r(2)] = obj.polar2xy(rho_ref + obj.sum, theta_ref);
+            theta = atan2(r(2)-p(2),r(1)-p(1));
+        end
+          
         function rho = evaluate(obj, theta)
             rho = (ppval(mod(theta, 2*pi), obj.fun));
         end
@@ -301,7 +187,6 @@ classdef Polar_trajectory_planner < handle
             if(not(tf))
                 hold off;
             end
-            
         end
         
     end % end public methods
@@ -354,11 +239,6 @@ classdef Polar_trajectory_planner < handle
             theta = mod(theta, 2*pi);
             x = rho.*(cos(theta)) + obj.center(1);
             y = rho.*(sin(theta)) + obj.center(2);
-        end
-        
-        function res = is_recovery_enabled(obj)
-            % Check if recovery is active
-            res = not(obj.standstill == -1);
         end
         
     end % end private methods
