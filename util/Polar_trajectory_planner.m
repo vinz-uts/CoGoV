@@ -35,17 +35,6 @@ classdef Polar_trajectory_planner < Planner
             % tolerance - tolerance used to understand if the reference was
             %             reached (in rad)
             % clockwise - used to specify the direction of travel on the curve
-            % recovery  - if specified activate the recovery procedure
-            %             if the vehicle does not move and requests 
-            %             a new reference for standstill times, then the
-            %             procedure is started.
-            % rec_tolerance - tolerance used to understand if the vehicle
-            %                 is stuck (meters)
-            % rec_from_collision - used to choose between 2 different
-            %                      recovery methods
-            %                      (true recovery with anticollision
-            %                      circular trajectory)
-            %                      (false recovery with higher references)
             
             obj = obj@Planner(varargin{:});
             

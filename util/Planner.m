@@ -3,26 +3,38 @@ classdef (Abstract) Planner < handle
     %   Detailed explanation goes here
     
     properties
-        p_old
-        r_old
+        p_old                       % Old position of vehicle 
+        r_old                       % Old reference
         
-        is_in_recovery
-        counter
-        rec_tolerance
-        standstill
-        tol
-        recovery_from_collision
+        %%% recovery properties
+        is_in_recovery              % If the recovery reference has been reached or not
+        counter                     % How much time the previous refence is still the same 
+        rec_tolerance               % How many times you tolerate to stay still
+        standstill                  % Dynamic value of old position freezing
+        tol                         % Tolerance ([m]) used to understand if the vehicle has reached the reference
+        recovery_from_collision     % To differentiate between Circular recovery or a custom one
+        %%%
     end
     
     methods (Abstract)
+        % Abstract methods that a planner must implement
+        
+        % Used to specify an initialization policy
         r = initialize_old_reference(obj, p);
+        
+        % Used to specify the actions to be performed when the reference has not yet been reached
         [r, theta] = compute_referecence_when_not_reached(obj, p);
+        
+        % Used to specify the actions to be performed to calculate a reference under normal use conditions
         [r, theta] = compute_standard_reference(obj, p)
+        
+        % Method used to understand if a reference has been reached
         res = reference_reached(obj, p);
     end
     
-    methods
+    methods 
         function obj = Planner(varargin)
+            % Variable arguments
             % recovery  - if specified activate the recovery procedure
             %             if the vehicle does not move and requests 
             %             a new reference for standstill times, then the
@@ -38,13 +50,11 @@ classdef (Abstract) Planner < handle
             %%%%% Default Values %%%%%
             obj.standstill = -1;
             obj.tol = 0.1;
-%             obj.delta_rho = 0;
             obj.counter  = 0;
-%             obj.rho_step = 0.011;
             obj.rec_tolerance = 0.001;
             %%%%%%%%%%%%
             
-             %%%%%%% Variable arguments management %%%%%%%
+            %%%%%%% Variable arguments management %%%%%%%
             validnames = {'recovery', 'rec_tolerance', 'rec_from_collision', 'rho_step'};
             
             nargs = length(varargin);
@@ -60,7 +70,8 @@ classdef (Abstract) Planner < handle
                     case validnames{3}
                         obj.recovery_from_collision =  values{pos};
                 end
-            end   
+            end 
+            %%%%%%%%%%%%
             
         end
         
@@ -74,6 +85,7 @@ classdef (Abstract) Planner < handle
             if(isempty(obj.p_old))
                 obj.p_old = p;
             end
+            
             % Initialize the previous reference if necessary
             if(isempty(obj.r_old))
                 [obj.r_old] = obj.initialize_old_reference(p);
@@ -82,15 +94,14 @@ classdef (Abstract) Planner < handle
             % The reference is not updated if the current one has not been reached
             % If the vehicle does not reach the reference for too long a
             % recovery procedure is activated
-            if(obj.is_in_recovery)
+            if(obj.is_in_recovery) % planner in recovery mode (recovery reference not reached)
                 r = obj.r_old;
                 if(obj.exit_from_recovery(p, r))
                     obj.is_in_recovery = false;
                     obj.counter = 0;
-%                     obj.delta_rho = 0;
                 end
            
-            elseif(not(obj.reference_reached(p)) && not(obj.need_recovery()))
+            elseif(not(obj.reference_reached(p)) && not(obj.need_recovery())) % standard reference not reached 
                 %%% Reference does not change
                 [r, theta] = obj.compute_referecence_when_not_reached(p);
                 %%%%
@@ -99,17 +110,18 @@ classdef (Abstract) Planner < handle
                     obj.counter = obj.counter + 1; 
                 end
                 
-            elseif(obj.need_recovery())
+            elseif(obj.need_recovery()) % If the vehicle is stuck for whatever reason, start a recovery procedure
                 
                 if(obj.recovery_from_collision) % anticollision recovery
                     [r, theta] = obj.compute_anticollision_recovery(sys, xa);
-                    obj.is_in_recovery = true; 
+                    obj.is_in_recovery = true;
                     
                 else % alternative recovery
                     [r, theta] = obj.compute_alternative_recovery(sys, xa);
                 end
-                    obj.counter = 0;
-            else % update the reference normally
+                
+                obj.counter = 0; % reset the recovery counter
+            else % standart behavior, update the reference normally
                 [r, theta] = compute_standard_reference(obj, p);
                 
                 % reset interanl state for recovery management
@@ -196,21 +208,18 @@ classdef (Abstract) Planner < handle
        function   res = need_to_count_for_recovery(obj, p)
            res = obj.is_recovery_enabled() && norm(p - obj.p_old) < obj.rec_tolerance;
        end
-        
-       function r_recovery = compute_delta_rho_recovery(obj, delta_rho)
-           theta_v = obj.xy2polar(obj.r_old(1), obj.r_old(2));
-           theta_ref = theta_v;
-           rho_ref = obj.evaluate(theta_ref);
-           r_recovery = zeros(2, 1);
-           [r_recovery(1), r_recovery(2)] = obj.polar2xy(rho_ref + delta_rho, theta_ref);
-       end
-       
+
        function res = is_recovery_enabled(obj)
            % Check if recovery is active
            res = not(obj.standstill == -1);
        end
        
-       function [r, theta] = compute_alternative_recovery(obj, sys, xa)
+       function [r, theta] = compute_alternative_recovery(~, ~, ~)
+           % If needed it can be implemented by other classes
+           r = [];
+           theta = [];
+           length(r);
+           length(theta);
            error('Not implemented');
        end
        %%%%%%%%%%%%%%%%%%%%%%%%%%
