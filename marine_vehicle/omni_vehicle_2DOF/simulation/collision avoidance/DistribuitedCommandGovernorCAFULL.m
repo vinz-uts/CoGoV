@@ -1,4 +1,4 @@
-classdef DistribuitedCommandGovernor < CommandGovernor
+classdef DistribuitedCommandGovernorCAFULL < CommandGovernor
     %% DISTRIBUITED COMMAND GOVERNOR
     %  Distribuite Command Governor for multi-agents nets. Computes
     %  the nearest reference g to r that statify local and global (with
@@ -10,8 +10,9 @@ classdef DistribuitedCommandGovernor < CommandGovernor
     end
     
     
+     
     methods
-        function obj = DistribuitedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,solver)
+        function obj = DistribuitedCommandGovernorCAFULL(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,solver)
             % DistribuitedCommandGovernor - Constructor
             % Create an instance of a Distribuited Command Governor.
             obj = obj@CommandGovernor(Phi,G,Hc,L,T,gi,Psi,k0);
@@ -39,10 +40,20 @@ classdef DistribuitedCommandGovernor < CommandGovernor
            
             if(nargin > 4)  % Obstacle avoidance
                 slack_var = 0;
-%                 cnstr = [cnstr, -0.01 <= slack_var <= 0.01];
-                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.4, r, cloud_points);
-                hype = hyperplane(ay, by);
-                cnstr = [cnstr ay'*w(1:2)<=(by-0.1)];
+                a = sdpvar(2,1);
+                b = sdpvar(1,1);
+                %             r = sdpvar(1,1);
+%                 rr = sdpvar(1,1);
+                
+                for i = 1:length(cloud_points(1, :))
+                    cnstr = [cnstr, a'*cloud_points(:, i) >= b + 0.4];
+                end
+                
+               	cnstr = [cnstr, a'*x(1:2) <= b];
+                
+                % Restrinction on the number of possible hyperplane
+                cnstr = [cnstr, norm(a,2) <= 1];        
+                cnstr = [cnstr a'*g <= (b)];
             end
             
             for i=1:(size(obj.U,1)/4)
@@ -58,8 +69,8 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                 cnstr = [cnstr obj.T*(obj.Rk(:, :, k)*w) <= obj.gi - obj.T*obj.bk(:, :, k)*x];
                 
                 if(nargin > 4)  % Obstacle avoidance
-                    xk = obj.bk(:, :, k)*x+obj.Rk(:, :, k)*w-obj.L*w;
-                    cnstr = [cnstr ay'*xk(1:2) <= (by-slack_var)];
+                    xk = obj.bk(:, :, k)*x + obj.Rk(:, :, k)*w - obj.L*w;
+                    cnstr = [cnstr a'*xk(1:2) <= (b-slack_var)];
                 end
                 
                 for i=1:(size(obj.U,1)/4)
@@ -84,6 +95,13 @@ classdef DistribuitedCommandGovernor < CommandGovernor
            
             ris = optimize(cnstr,obj_fun,options);
             g = double(g);
+            if(nargin > 4) 
+                a_ris = double(a);
+                b_ris = double(b);
+                
+                hype = hyperplane(a_ris,b_ris);
+
+            end
 
             if(ris.problem ~= 0)
                 fprintf("WARN: Problem %d \n %s\n", ris.problem, ris.info);
@@ -98,7 +116,6 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             % position
             a = sdpvar(2,1);
             b = sdpvar(1,1);
-            secure_range = 0.1;
 %             r = sdpvar(1,1);
             rr = sdpvar(1,1);
             r = 0;
@@ -106,18 +123,18 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             V = [];
             % Constraints to keep all the points on one side
             for i = 1:length(cloud_points(1, :))
-                V = [V,(a'*cloud_points(:, i))>=(b-r+d_min)];
+                V = [V, a'*cloud_points(:, i) >= b - r + d_min];
             end
             
             % and the veichle to the other side of the hyperplane
-            V = [V,(a'*y<=b-0.009)];
+            V = [V, a'*y <= b];
             
             % Restrinction on the number of possible hyperplane
-            V = [V,(norm(a,2)<=1)];
+            V = [V, norm(a,2) <= 1];
                     
             % Calculation of the closest point
-            tmpx = cloud_points(1,:)-y(1);
-            tmpy = cloud_points(2,:)-y(2);
+            tmpx = cloud_points(1,:) - y(1);
+            tmpy = cloud_points(2,:) - y(2);
             tmp = [tmpx; tmpy];
             norm_vect = vecnorm(tmp);
             [m, i] = min(norm_vect);
@@ -128,14 +145,16 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             maxY = max(cloud_points(2, :));
             
             delta = 0.1;
-            if(not(g(1)>= minX && g(1)<= maxX && y(1)+delta >= minX && y(1)-delta<= maxX || ...
+            if(not(g(1) >= minX && g(1) <= maxX && y(1) + delta >= minX && y(1) - delta <= maxX || ...
                     g(2) >= minY && g(2) <= maxY && y(2) + delta>= minY && y(2) - delta <= maxY))
                 
-                V = [V,(a'*g <=b+rr)];
-                ob_fun = norm(r,2)+norm(rr)+norm(a'*cloud_points(:, i) - b);
-                
+                V = [V, a'*g <= b + rr];
+%                 V = [V, -0.1 <= r <= 0.1];
+                ob_fun = norm(r,2) + norm(rr) + norm(a'*cloud_points(:, i) - b) ;
             else
-                ob_fun = norm(r,2)+norm(a'*cloud_points(:, i) - b);
+                
+%                 V = [V, -0.1 <= r <= 0.1];
+                ob_fun = norm(r,2)  + norm(a'*cloud_points(:, i) - b);
             end
             
             % Optimization
@@ -145,11 +164,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             a_ris = double(a);
             b_ris = double(b);
             
-            if(diagnos.problem ~= 0)
-                warning('Hyperplane Not Found');
-                fprintf("WARN: Problem %d \n %s\n", diagnos.problem, diagnos.info);
-            end
-%             fprintf('rr=%d\n r = %d\n', double(rr), double(r));
+            fprintf('rr=%d\n r = %d\n', double(rr), double(r));
             if (norm(a_ris) == 0 && b_ris == 0)
                 warning('Hyperplane Not Found');
             end

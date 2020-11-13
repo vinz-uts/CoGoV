@@ -50,14 +50,14 @@ Psi = [ 1  0;
 k0 = 10;
 
 %%%%%% WARN: use this for infin. norm constraint as usual
-% Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
-%               -F              f      ];
-% L = zeros(4,2);
+Hc = [ zeros(2,2) eye(2)  zeros(2,2) ;
+              -F              f      ];
+L = zeros(4,2);
 
 %%%%%% WARN: use for quadratic norm constraints 
-Hc = [ zeros(4,4)  zeros(4,2) ;
-        -F         f      ];
-L = zeros(6,2);
+% Hc = [ zeros(4,4)  zeros(4,2) ;
+%         -F         f      ];
+% L = zeros(6,2);
 
 vehicle.ctrl_sys.Hc = Hc;    vehicle.ctrl_sys.L = L;
 %%%%%%
@@ -72,10 +72,13 @@ ySamples = [0, 0.45, 0.7, 1, 0.9, 0.75, 0.3, 0, -0.5, -0.7, -1, -1, -0.45]';
 
 ptp = Polar_trajectory_planner([xSamples(1:floor(length(xSamples)/2)); xSamples(1)], [ySamples(1:floor(length(ySamples)/2)); ySamples(1)]);
 
+r = [3,1]'; % position references
+
+vehicle.planner = LinePlanner(r, 'recovery', 20, 'radius', 0.7 );
 
 Tf = 30; % simulation time
 Tc_cg = 1*vehicle.ctrl_sys.Tc; % Recalculation references time
-r = [3,1]'; % position references
+
 N = ceil(Tf/Tc_cg); % simulation steps number
 
 %%%%% Data collection about optimization time %%%%%%%%
@@ -91,14 +94,17 @@ for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
-%     [g,s] = vehicle.cg.compute_cmd(xa,ptp.compute_reference(vehicle.ctrl_sys.sys));
-     [g,s] = vehicle.cg.compute_cmd(xa,r);
+    ref = vehicle.planner.compute_reference(vehicle,xa);
+    ref = ref';
+    [g,s] = vehicle.cg.compute_cmd(xa,ref);
+%      [g,s] = vehicle.cg.compute_cmd(xa,r);
     vehicle.ctrl_sys.sim(g,Tc_cg);
     cputime= [cputime,s.solvertime];
     yalmiptime=[yalmiptime,s.yalmiptime];
-    plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'b.');
+%     plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'b.');
     plot(r(1), r(2), 'bo');
     plot(g(1),g(2), 'kx');
+    plot_2Dof_vehicle(vehicle, ref, vehicle.planner.radius,'RangeAxis',[0 4 0 4]);
     hold on
     drawnow
 end

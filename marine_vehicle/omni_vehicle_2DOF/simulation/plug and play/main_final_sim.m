@@ -17,7 +17,7 @@ vehicle{3} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,
 vehicle{3}.init_position(-0.9982,0.334);
 
 vehicle{4} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-vehicle{4}.init_position(-1.5, -1.5);
+vehicle{4}.init_position(3, 3);
 % end
 
 %% Planners for Circular Path Following

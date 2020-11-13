@@ -52,30 +52,30 @@ classdef CommandGovernor < handle
             w = sdpvar(length(r),1);
             
             %%% Uncomment for normal behaviour of CG
-%             cnstr = obj.T*(obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w <= obj.gi;
-%             xk = x;
-%
-%             for k = 1:obj.k0
-%                 xk = obj.Phi*xk+obj.G*w;
-%                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
-%             end
-            
-            %%% Uncomment to test quadratic norm constraints
-            
-            vect =((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L));
-            vect = vect(end-1:end,end-1:end);
-            
-            cnstr = norm(vect*w)^2 <= 10 ;
-            
+            cnstr = obj.T*(obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L)*w <= obj.gi;
             xk = x;
-            
+
             for k = 1:obj.k0
                 xk = obj.Phi*xk+obj.G*w;
-                vect = obj.Hc*xk;
-                vect = vect(end-1:end);
-                cnstr = [cnstr norm(vect)^2 <= 10];
+                cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
             end
             
+            %%% Uncomment to test quadratic norm constraints
+%             
+%             vect =((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L));
+%             vect = vect(end-1:end,end-1:end);
+%             
+%             cnstr = norm(vect*w)^2 <= 10 ;
+%             
+%             xk = x;
+%             
+%             for k = 1:obj.k0
+%                 xk = obj.Phi*xk+obj.G*w;
+%                 vect = obj.Hc*xk;
+%                 vect = vect(end-1:end);
+%                 cnstr = [cnstr norm(vect)^2 <= 10];
+%             end
+%             
             
             %%% Uncomment to plot constraints
             plot(cnstr);
