@@ -9,8 +9,11 @@ classdef ControlledVehicle < handle
 		g % last computed references
         color % round color
         planner % Planner of the vehicle
-        pending_plugin
-        freeze
+        pending_plugin % Indicates the index of the current plugin request
+                       % -1 equals no requests
+        freeze  % If setted to 1 the vehicle freezes its old reference
+        parent % Indicates the parent node in the ST structure,
+               % if 0 then the vehicle is the root node
     end
     
     

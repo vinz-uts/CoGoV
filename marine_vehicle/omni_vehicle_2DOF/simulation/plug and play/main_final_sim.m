@@ -41,9 +41,7 @@ vehicle{3}.planner.transform(1, [0, 1]);
 
 
 %% Net configuration
-%   1
-%  / \
-% 2   3
+
 adj_matrix = [-1  1  1  0;
     1 -1  1  0;
     1  1 -1  0;

@@ -1,5 +1,5 @@
 %% Clear workspace
-clear all;  close all;
+clear;  close all;
 
 %% Load vehicles' model matrices
 addpath('../../../../marine_vehicle');      addpath('../../../../marine_vehicle/omni_vehicle_2DOF');
@@ -10,11 +10,14 @@ vehicle_2DOF_model_2
 
 %% Init vehicles
 N = 5; % number of vehicles
+vehicle = cell(1, N);
 for i=1:N
     vehicle{i} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
     vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
 end
 
+vehicle{1}.init_position(23, 20);
+vehicle{3}.init_position(16, 13);
 %% Communication constraints
 R   = 7; % maximum distance of communications - [m]
 R__ = 6; % maximum distance of connectivity - [m]
@@ -59,14 +62,14 @@ plot_color = ['b', 'g', 'k', 'r', 'm'];
 
 % References
 for i=1:N
-    r{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N) ]' +20 ;
-    r_{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N) ]' +20 ;
+    r{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N) ]' + 20 ;
+    r_{i} = [10*sin(2*pi/N*i+2*2*pi/N) , 10*cos(2*pi/N*i+2*2*pi/N) ]'+ 20 ;
 end
-% r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+% r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
 % r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
 % r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
 % 
-% r_{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+% r_{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
 % r_{4} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 % r_{5} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 
@@ -93,7 +96,7 @@ for t=1:NT
                         % to plug with a vehicle already in a
                         % pending_plugin
                         if d_ij <= R_ && ... 
-                                vehicle{i}.pending_plugin == -1 && ... 
+                                (vehicle{i}.pending_plugin == -1 || vehicle{i}.pending_plugin == 0)  && ...
                                 vehicle{j}.pending_plugin == -1 && ... %%% No plugin pending
                                 isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)) %  ||v{i}-v{j}||∞ ≤ R && not already pending plug-in request
                             fprintf('Plug-in request from %d to %d \n',i,j);
@@ -114,6 +117,7 @@ for t=1:NT
 %                                     vehicle{k}.pending_plugin = -1;
 %                                     vehicle{k}.freeze = 0;  % 1 is eq to frez.
 %                                 end
+                           
                             else
                                 fprintf('Unpluggable: %d - %d. Need a virtual command \n',i,j);
                                 pluggable_status = 'virtual_cmd';
@@ -121,7 +125,15 @@ for t=1:NT
                                 for k = vehicle{j}.cg.neigh
                                     g_n = [g_n; vehicle{k}.g];
                                 end                              
-                                [g_j,g_i] = vehicle{j}.cg.compute_virtual_cmd(vehicle{j}.g,vehicle{i}.ctrl_sys.sys.xi(1:2),g_n,[],d_min);
+                                [g_j,g_ii] = vehicle{j}.cg.compute_virtual_cmd(vehicle{j}.g,vehicle{i}.ctrl_sys.sys.xi(1:2),g_n,[],d_min+0.1*d_min);
+                                
+                                g_n = [];
+                                for k = vehicle{i}.cg.neigh
+                                    g_n = [g_n; vehicle{k}.g];
+                                end
+                                
+                                [g_i,g_jj] = vehicle{i}.cg.compute_virtual_cmd(vehicle{i}.ctrl_sys.sys.xi(1:2),vehicle{j}.g,g_n,[],d_min+0.1*d_min);
+                                
                                 r{j} = g_j;
                                 r{i} = g_i;
                                 % Send freeze request to v{j} neighbours
@@ -134,11 +146,26 @@ for t=1:NT
                                     vehicle{k}.freeze = 1;
                                 end
                             end
+                        elseif(d_ij <= R_ && not(vehicle{j}.pending_plugin == i) && not(vehicle{i}.pending_plugin == 0) &&...
+                                not(vehicle{j}.pending_plugin == -1) && ...
+                                vehicle{i}.pending_plugin == -1 && isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)))
+                            fprintf('Vehicle %d already in plug-in operations. Computing proper virtual reference(%d) \n',j,i);
+                            
+                            g_n = [];
+                            for k = vehicle{i}.cg.neigh
+                                g_n = [g_n; vehicle{k}.g];
+                            end
+                            
+                            [g_i,g_j] = vehicle{i}.cg.compute_virtual_cmd(vehicle{i}.g,r{j},g_n,[],d_min+0.1*d_min);
+                            r{i} = g_i;
+                            vehicle{i}.pending_plugin = 0;
+                        
                         end
                         
                          if d_ij <= R_ && ... 
                                 vehicle{i}.pending_plugin == j && vehicle{i}.freeze == 0 && ...
                                 isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh)) 
+                            
                                 pluggable_status = vehicle{j}.cg.check([vehicle{j}.ctrl_sys.sys.xi; vehicle{j}.ctrl_sys.xci],...
                                     [vehicle{i}.ctrl_sys.sys.xi; vehicle{i}.ctrl_sys.xci],vehicle{j}.g,vehicle{i}.g,[],d_min);
                                 if pluggable_status %== 'success'
@@ -160,7 +187,10 @@ for t=1:NT
                                     end
                                 end                        
                          end
-                        
+                        if((vehicle{i}.pending_plugin==0) && norm(r{i}-vehicle{i}.ctrl_sys.sys.xi(1:2))< 0.1)
+                            vehicle{i}.pending_plugin = -1;
+                            r{i}=r_{i};
+                        end
                     end
                 end
             end

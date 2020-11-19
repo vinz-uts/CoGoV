@@ -78,8 +78,8 @@ classdef CommandGovernor < handle
 %             
             
             %%% Uncomment to plot constraints
-            plot(cnstr);
-            hold on;
+%             plot(cnstr);
+%             hold on;
             
             %%% Uncomment to plot Convceex Hull of constraits sets
             %             hulla = hull(cnstr);
