@@ -110,7 +110,7 @@ for t=1:NT
                 end
                 r_tmp = vehicle{i}.planner.compute_reference(vehicle{i},xa); % perdo riferimento virtuale
                  
-                [g,s] = vehicle{i}.cg.compute_cmd(xa,r_tmp',g_n);
+                [g,s] = vehicle{i}.cg.compute_cmd(xa,r_tmp,g_n);
                 if ~isempty(g)
                     vehicle{i}.g = g;
                 else

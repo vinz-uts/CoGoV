@@ -17,33 +17,32 @@ for i=1:N
     vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
 end
 
+vehicle{1}.init_position(0, 5);
+vehicle{2}.init_position(10, 5);
+vehicle{3}.init_position(13, 5);
+vehicle{4}.init_position(23, 5);
+vehicle{5}.init_position(5, 7);
+vehicle{5}.init_position(12, 10);
 % References
 xSamples = [1, 0, -1, 0];
 ySamples = [0, 1, 0, -1];
+vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples);
+vehicle{1}.planner.transform(5, [5, 5]);
+vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples);
+vehicle{2}.planner.transform(5, [5, 5]);
+
+vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples);
+vehicle{3}.planner.transform(5, [18, 5]);
+plot(vehicle{3}.planner);
+vehicle{4}.planner = Polar_trajectory_planner(xSamples, ySamples);
+vehicle{4}.planner.transform(5, [18, 5]);
 
 
-
-
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4);
-vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]);
-
-
-
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4);
-vehicle{3}.planner.transform(3, [vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]);
-
-
-vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false);
-vehicle{5}.planner.transform(6, [vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]);
-
-r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+vehicle{5}.planner = LinePlanner([12, 0, 12, 10], 'radius', 1.2);
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
 r{3} = vehicle{3}.ctrl_sys.sys.xi(1:2);
 r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
 r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
-
-vehicle{1}.planner = LinePlanner(r{1}, 'radius', 1.2);
-vehicle{4}.planner = LinePlanner(r{4}, 'radius', 1.2);
 
 %% Net configuration
 
@@ -75,9 +74,9 @@ d_max = 20;  % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
-Vx = 0.7; % max abs of speed along x - [m/s]
-Vy = 0.7; % max abs of speed along y - [m/s]
-T_max = 30; % max abs of motor thrust - [N]
+Vx = 0.5; % max abs of speed along x - [m/s]
+Vy = 0.5; % max abs of speed along y - [m/s]
+T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 1000*eye(2); % vehicle's references weight matrix
@@ -115,7 +114,7 @@ end
 
 
 %% Simulation Colored Round CG
-Tf = 150; % simulation time
+Tf = 20; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
@@ -206,13 +205,13 @@ for t=1:NT
     
     figure(1);
     
-    axis([0 40 0 40]);
+    axis([0 25 0 25]);
     for k=1:N
         % Trajectory
         %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
-        axis([0 40 0 40]);
+        axis([0 25 0 25]);
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
@@ -226,9 +225,9 @@ for t=1:NT
             plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
 
         end
-        plot(vehicle{2}.planner);
-        plot(vehicle{3}.planner);
-        plot(vehicle{5}.planner);
+        if(not(k == 5))
+            plot(vehicle{k}.planner);
+        end
     end
     
     hold off;

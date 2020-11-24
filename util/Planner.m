@@ -80,6 +80,9 @@ classdef (Abstract) Planner < handle
             % sys - ControlledSystem
             % xa  - Augmented state
             
+            if(not(iscolumn(xa)))
+                xa = xa';
+            end
             % Extract current state
             p = sys.ctrl_sys.sys.xi(1:2);
             if(isempty(obj.p_old))
@@ -88,7 +91,12 @@ classdef (Abstract) Planner < handle
             
             % Initialize the previous reference if necessary
             if(isempty(obj.r_old))
-                [obj.r_old] = obj.initialize_old_reference(p);
+                [r_] = obj.initialize_old_reference(p);
+                if(not(iscolumn(r_)))
+                    obj.r_old = r_';
+                else
+                     obj.r_old = r_;
+                end
             end       
             
             % The reference is not updated if the current one has not been reached
@@ -128,6 +136,9 @@ classdef (Abstract) Planner < handle
                 obj.counter = 0;
             end
             % save state
+            if(not(iscolumn(r)))
+                r = r';
+            end
             obj.r_old = r;
             obj.p_old = p;
        end

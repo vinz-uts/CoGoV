@@ -25,9 +25,9 @@ adj_matrix = [-1  1  0;
                1 -1  1;
                0  1 -1];
            
-spanning_tree =[-1  1  0;
-                1 -1  1 ;
-                0  1 -1];
+spanning_tree =[-1  0  0;
+                0 -1  0 ;
+                0  0 -1];
  
 
 %% Vehicles constraints
@@ -55,7 +55,7 @@ dist2 = [];
 for i=1:N
     vehicle{i}.cg = DynamicDistribuitedCommandGovernor(i,Phi,G,Hc,L,Psi,k0,'gurobi');
     if(not(i==2))
-        vehicle{i}.cg.add_vehicle_cnstr('speed',2*[Vx,Vy],'thrust',2*T_max);
+        vehicle{i}.cg.add_vehicle_cnstr('speed',[Vx,Vy],'thrust',T_max);
     else 
         vehicle{i}.cg.add_vehicle_cnstr('speed',[0.5,0.5],'thrust',20);
     end
@@ -95,9 +95,9 @@ r{1} = [15,10]';
 r{2} = [18,5]';
 r{3} = [21,0]';
 
-vehicle{1}.planner = LinePlanner(r{1}, 'radius', 2*1.2);
-vehicle{2}.planner = LinePlanner(r{2}, 'radius', 1.2);
-vehicle{3}.planner = LinePlanner(r{3}, 'radius', 2*1.2);
+% vehicle{1}.planner = LinePlanner(r{1}, 'radius', 2*1.2);
+% vehicle{2}.planner = LinePlanner(r{2}, 'radius', 1.2);
+% vehicle{3}.planner = LinePlanner(r{3}, 'radius', 2*1.2);
 
 round = 1;
 for t=1:NT
@@ -114,9 +114,10 @@ for t=1:NT
                     xc = vehicle{k}.ctrl_sys.xci; % controller{j} current state
                     xa = [xa;x;xc];
                 end
-                r_tmp = vehicle{i}.planner.compute_reference(vehicle{i},xa); % perdo riferimento virtuale
+%                 r_tmp = vehicle{i}.planner.compute_reference(vehicle{i},xa); % perdo riferimento virtuale
                  
-                [g,s] = vehicle{i}.cg.compute_cmd(xa,r_tmp',g_n);
+%                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r_tmp',g_n);
+                [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
                 if ~isempty(g)
                     vehicle{i}.g = g;
                 else

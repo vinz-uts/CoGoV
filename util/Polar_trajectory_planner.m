@@ -96,8 +96,8 @@ classdef Polar_trajectory_planner < Planner
         function transform(obj, sF, xy)
             % Input:
             % sf - scale factor used to enlarge or reduce the trajectory
-            x = sF*(obj.xSamples + xy(1));
-            y = sF*(obj.ySamples + xy(2));
+            x = sF*(obj.xSamples)+ xy(1);
+            y = sF*(obj.ySamples)+ xy(2);
             %%% New interpolation function 
             obj.computeParameterization(x, y);
             %%%%%
