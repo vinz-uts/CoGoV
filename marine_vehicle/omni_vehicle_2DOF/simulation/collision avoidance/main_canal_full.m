@@ -9,7 +9,7 @@ vehicle_2DOF_model_2 % WARN: Select the correct constraints matrix Hc, L.
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 
 
-vehicle.init_position(0,0); % set vehicle's initial position
+vehicle.init_position(0,11); % set vehicle's initial position
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
@@ -30,7 +30,7 @@ Psi = 0.01*eye(2); % vehicle's references weight matrix
 k0 = 10; % prediction horizon
 
 %% Dynamic Command Governor
-vehicle.cg = DynamicDistribuitedCommandGovernor(1,Phi,G,Hc,L,Psi,k0, 'bmibnb');
+vehicle.cg = DynamicDistribuitedCommandGovernor(1,Phi,G,Hc,L,Psi,k0, 'gurobi');
 vehicle.cg.add_vehicle_cnstr('position',[x_max,50],'thrust',T_max,'speed',[Vx,Vy]);
 
 %% Obstacle Initialization

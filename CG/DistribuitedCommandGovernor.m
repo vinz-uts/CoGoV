@@ -40,7 +40,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             if(nargin > 4)  % Obstacle avoidance
                 slack_var = 0;
 %                 cnstr = [cnstr, -0.01 <= slack_var <= 0.01];
-                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.4, r, cloud_points);
+                [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.3, r, cloud_points);
                 hype = hyperplane(ay, by);
                 cnstr = [cnstr ay'*w(1:2)<=(by-0.1)];
             end
@@ -106,7 +106,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             V = [];
             % Constraints to keep all the points on one side
             for i = 1:length(cloud_points(1, :))
-                V = [V,(a'*cloud_points(:, i))>=(b-r+d_min)];
+                V = [V,(a'*cloud_points(:, i))>=(b+d_min)];
             end
             
             % and the veichle to the other side of the hyperplane
@@ -129,13 +129,13 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             
             delta = 0.1;
             if(not(g(1)>= minX && g(1)<= maxX && y(1)+delta >= minX && y(1)-delta<= maxX || ...
-                    g(2) >= minY && g(2) <= maxY && y(2) + delta>= minY && y(2) - delta <= maxY))
+                    g(2) >= minY && g(2) <= maxY && y(2) + delta>= minY && y(2) - delta <= maxY) )
                 
                 V = [V,(a'*g <=b+rr)];
-                ob_fun = norm(r,2)+norm(rr)+norm(a'*cloud_points(:, i) - b);
+                ob_fun = 0.000006*norm(rr)-norm(a'*y-b+0.009,inf); % 1*norm(a'*cloud_points(:, i) - b)
                 
             else
-                ob_fun = norm(r,2)+norm(a'*cloud_points(:, i) - b);
+                ob_fun = norm(a'*cloud_points(:, i) - b);
             end
             
             % Optimization
