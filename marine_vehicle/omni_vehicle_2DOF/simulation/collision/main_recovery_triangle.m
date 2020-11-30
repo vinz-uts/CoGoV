@@ -21,7 +21,10 @@ ySamples = 1.2*[0, 1, 0, -1]';
 vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples,'recovery', 20,'clockwise',false,'rec_from_collision',true);
 vehicle{1}.planner.transform(1, [-1, 0]);
 
-vehicle{2}.planner = Board_planner([-3,1,3,3],20);
+Reference_vehicle2 = [-3,1,3,3]; 
+
+%%% For now no recovery policy for vehicle 2, but can be added
+vehicle{2}.planner = LinePlanner(Reference_vehicle2);
 
 %% Net configuration
 %   1

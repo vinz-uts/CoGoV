@@ -14,35 +14,40 @@ N = 5; % number of vehicles
 vehicle = cell(1, N);
 for i=1:N
     vehicle{i} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-    vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
+    vehicle{i}.init_position(3 ,i*4 - 5);
+    r{i} = [8*sin(2*pi/N*i) + 25,8*cos(2*pi/N*i)+5]';
+    cloud_points(:,i) = [6*sin(2*pi/N*i) + 25,6*cos(2*pi/N*i)+5]';
+    r_{i} = r{i};
 end
 
-vehicle{1}.init_position(0, 5);
-vehicle{2}.init_position(10, 5);
-vehicle{3}.init_position(13, 5);
-vehicle{4}.init_position(23, 5);
-vehicle{5}.init_position(5, 7);
-vehicle{5}.init_position(12, 10);
-% References
-xSamples = [1, 0, -1, 0];
-ySamples = [0, 1, 0, -1];
-vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples);
-vehicle{1}.planner.transform(5, [5, 5]);
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples);
-vehicle{2}.planner.transform(5, [5, 5]);
+% 
+r{1} = r_{2};
+r{2} = r_{3};
+r{3} = r_{4};
+r{4} = r_{5};
+r{5} = r_{1};
 
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples);
-vehicle{3}.planner.transform(5, [18, 5]);
-plot(vehicle{3}.planner);
-vehicle{4}.planner = Polar_trajectory_planner(xSamples, ySamples);
-vehicle{4}.planner.transform(5, [18, 5]);
+r_{1} = r{1};
+r_{2} = r{2};
+r_{3} = r{3};
+r_{4} = r{4};
+r_{5} = r{5};
 
+r{4} = r{1};
+r{1} = r_{2} - [0;5]; 
+% 
+% 
+r_{1} = r{1};
+r_{2} = r{2};
+r_{3} = r{3};
+r_{4} = r{4};
+r_{5} = r{5};
 
-vehicle{5}.planner = LinePlanner([12, 0, 12, 10], 'radius', 1.2);
-r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
-r{3} = vehicle{3}.ctrl_sys.sys.xi(1:2);
-r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
-r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
+% vehicle{1}.planner = LinePlanner(r{1}, 'radius', 20);
+% vehicle{2}.planner = LinePlanner(r{2}, 'radius', 20);
+% vehicle{3}.planner = LinePlanner(r{3}, 'radius', 20);
+% vehicle{4}.planner = LinePlanner(r{4}, 'radius', 20);
+% vehicle{5}.planner = LinePlanner(r{5}, 'radius', 20);
 
 %% Net configuration
 
@@ -70,17 +75,17 @@ end
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 20;  % maximum distance between vehicles - [m]
+d_max = 7;  % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
-Vx = 0.5; % max abs of speed along x - [m/s]
-Vy = 0.5; % max abs of speed along y - [m/s]
-T_max = 20; % max abs of motor thrust - [N]
+Vx = 10; % max abs of speed along x - [m/s]
+Vy = 10; % max abs of speed along y - [m/s]
+T_max = 100; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 1000*eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
+k0 = 40; % prediction horizon
 
 %%% Vector for distance for plotting purposes
 dist = [];
@@ -88,6 +93,8 @@ dist2 = [];
 dist3 = [];
 dist4 = [];
 
+pentagon = polyshape( cloud_points(1,:),cloud_points(2,:));
+hypeblack = [];
 
 %% Dynamic Command Governor
 for i=1:N
@@ -114,7 +121,7 @@ end
 
 
 %% Simulation Colored Round CG
-Tf = 20; % simulation time
+Tf = 150; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
@@ -140,6 +147,8 @@ for t=1:NT
                     end
                 end
             end
+            
+            
             if(not(vehicle{i}.parent==0))
                 if(d_ijmin < norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{vehicle{i}.parent}.ctrl_sys.sys.xi(1:2)))
                     spanning_tree_tmp = spanning_tree;
@@ -185,9 +194,13 @@ for t=1:NT
                 xa = [xa;x;xc];
             end
             
-            r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
+%             r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
+            if(i==3)
+                [g,s,hypeblack] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points);
+            else
+                [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points);
+            end
             
-            [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
             
             if ~isempty(g)
                 vehicle{i}.g = g;
@@ -205,18 +218,24 @@ for t=1:NT
     
     figure(1);
     
-    axis([0 25 0 25]);
+    axis([0 40 -10 30]);
     for k=1:N
         % Trajectory
         %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
-        axis([0 25 0 25]);
+        axis([0 40 -10 30]);
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
+        plot(r_{k}(1), r_{k}(2), strcat(plot_color(k), 'o'));
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
+        plot(pentagon);
         %%%%%%%%%%%%
+        if(k==3 && not(isempty(hypeblack)) && false)
+            plot(hypeblack);
+        end
+        
         if(not(vehicle{k}.parent==0))
             v = vehicle{k}.ctrl_sys.sys.xi(1:2);
             p =  vehicle{vehicle{k}.parent}.ctrl_sys.sys.xi(1:2);
@@ -225,9 +244,9 @@ for t=1:NT
             plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
 
         end
-        if(not(k == 5))
-            plot(vehicle{k}.planner);
-        end
+%         plot(vehicle{2}.planner);
+%         plot(vehicle{3}.planner);
+%         plot(vehicle{5}.planner);
     end
     
     hold off;

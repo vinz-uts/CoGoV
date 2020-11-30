@@ -72,9 +72,9 @@ end
 %% Planner
 limits = [-Max_x, Max_x, Max_y, -Max_y];
 
-pl(1) =  BorderPlanner(1, 0.5, limits, 0.15);
-pl(2) =  BorderPlanner(1, -0.7, limits, 0.15);
-pl(3) =  BorderPlanner(1, 0.1, limits, 0.15);
+pl(1) =  Border_Planner([Max_x, Max_y], 0.5, 'radius', 1);
+pl(2) =  Border_Planner([Max_x, Max_y], -0.7, 'radius', 1);
+pl(3) =  Border_Planner([Max_x, Max_y], 0.1, 'radius', 1);
 
 % Color the net
 colors = [0,1];
@@ -127,7 +127,7 @@ for t=1:NT
             
             
             
-            r = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+            r = plan.compute_reference(vehicle{i}, xa);
             
             if(i==3 && blockedd)
                 r=reference3(1:2);

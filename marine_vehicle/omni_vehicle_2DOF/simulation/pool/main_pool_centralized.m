@@ -167,9 +167,9 @@ cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 %% Planner
 limits = [-Max_x, Max_x, Max_y, -Max_y];
 
-pl(1) =  BorderPlanner(1, 0.5, limits, 0.15);
-pl(2) =  BorderPlanner(1, -0.7, limits, 0.15);
-pl(3) =  BorderPlanner(1, 0.1, limits, 0.15);
+pl(1) =  Border_Planner([Max_x, Max_y], 0.5, 'radius', 1);
+pl(2) =  Border_Planner([Max_x, Max_y], -0.7, 'radius', 1);
+pl(3) =  Border_Planner([Max_x, Max_y], 0.1, 'radius', 1);
 
 % Color the net
 colors = [0,1];
@@ -207,7 +207,7 @@ for t=1:NT
     for i=1:N
         plan = pl(i);
         
-        r{i} = plan.compute_reference(vehicle{i}.ctrl_sys.sys);
+        r{i} = plan.compute_reference(vehicle{i}, []);
         
         if(i==3 && blockedd)
             r{3}=reference3(1:2);

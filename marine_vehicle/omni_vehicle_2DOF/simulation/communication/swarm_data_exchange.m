@@ -8,7 +8,6 @@ addpath(genpath('../../../../tbxmanager'));
 
 vehicle_2DOF_model_2
 
-%%%% Simulation Settings
 %% Init vehicles
 N = 5; % number of vehicles
 vehicle = cell(1, N);
@@ -17,33 +16,6 @@ for i=1:N
     vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
 end
 
-% References
-xSamples = [1, 0, -1, 0];
-ySamples = [0, 1, 0, -1];
-
-
-
-
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4);
-vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]);
-
-
-
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4);
-vehicle{3}.planner.transform(3, [vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]);
-
-
-vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false);
-vehicle{5}.planner.transform(6, [vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]);
-
-r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
-r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
-r{3} = vehicle{3}.ctrl_sys.sys.xi(1:2);
-r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
-r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
-
-vehicle{1}.planner = LinePlanner(r{1}, 'radius', 1.2);
-vehicle{4}.planner = LinePlanner(r{4}, 'radius', 1.2);
 
 %% Net configuration
 
@@ -54,11 +26,10 @@ adj_matrix = [-1  1  0  0  1;
     1  0  0  1 -1];
 
 spanning_tree =[-1  1  0  0  0;
-                 1 -1  1  0  0;
-                 0  1 -1  1  0;
-                 0  0  1 -1  1;
-                 0  0  0  1 -1];
-%%%%%%%%%%%%%
+    1 -1  1  0  0;
+    0  1 -1  1  0;
+    0  0  1 -1  1;
+    0  0  0  1 -1];
 
 vehicle{1}.parent = 0;
 
@@ -71,13 +42,13 @@ end
 % Vehicles swarm position constraints
 % ||(x,y)_i-(x,y)_j||∞ ≤ d_max
 % ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 20;  % maximum distance between vehicles - [m]
-d_min = 1; % minimum distance between vehicles - [m]
+d_max = 13;  % maximum distance between vehicles - [m]
+d_min = 3; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
-Vx = 0.7; % max abs of speed along x - [m/s]
-Vy = 0.7; % max abs of speed along y - [m/s]
-T_max = 30; % max abs of motor thrust - [N]
+Vx = 0.5; % max abs of speed along x - [m/s]
+Vy = 0.5; % max abs of speed along y - [m/s]
+T_max = 20; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 1000*eye(2); % vehicle's references weight matrix
@@ -115,15 +86,25 @@ end
 
 
 %% Simulation Colored Round CG
-Tf = 150; % simulation time
+Tf = 20; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
 plot_color = ['b', 'g', 'k', 'r', 'm'];
-% 
-% for i=5:N
-%     vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
-% end
+pl = Phisical_Layer(N, 200, 0, 1);
+pl.update(vehicle, 0);
+
+% References
+
+r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
+r{3} = vehicle{3}.ctrl_sys.sys.xi(1:2);
+r{4} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+r{5} = vehicle{1}.ctrl_sys.sys.xi(1:2);
+
+for i=1:N
+    vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
+end
 
 round = 1;
 for t=1:NT
@@ -151,6 +132,7 @@ for t=1:NT
                     if(isConnected(spanning_tree_tmp))
                         
                         % Remove the old parent proximity constraints
+                        pl.send_packet(i, j, [1,2]);
                         vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                         vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                         vehicle{vehicle{i}.parent}.cg.add_swarm_cnstr(i,'anticollision',d_min);
@@ -162,13 +144,16 @@ for t=1:NT
                         fprintf('***************Parent changed (%d ,%d) **************** \n ',i,index_min);
                         
                         % Add proximity constraints with new parent
-                        vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
-                        vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
-                        
-                        vehicle{vehicle{i}.parent}.cg.add_swarm_cnstr(i,'proximity',d_max,'anticollision',d_min);
-                        vehicle{i}.cg.add_swarm_cnstr(vehicle{i}.parent,'proximity',d_max,'anticollision',d_min);
-                        
-                        spanning_tree = spanning_tree_tmp;
+                        if(pl.look_for_packets(vehicle{i}.parent))
+                            pl.get_packet(obj, vehicle{i}.parent)
+                            vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
+                            vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
+                            
+                            vehicle{vehicle{i}.parent}.cg.add_swarm_cnstr(i,'proximity',d_max,'anticollision',d_min);
+                            vehicle{i}.cg.add_swarm_cnstr(vehicle{i}.parent,'proximity',d_max,'anticollision',d_min);
+                            
+                            spanning_tree = spanning_tree_tmp;
+                        end
                     else
                         fprintf('************Change parent request denied (%d ,%d) **************** \n ',i,index_min);
                     end
@@ -186,9 +171,9 @@ for t=1:NT
                 xa = [xa;x;xc];
             end
             
-            r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
+            r_tmp = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
             
-            [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
+            [g,s] = vehicle{i}.cg.compute_cmd(xa,r_tmp,g_n);
             
             if ~isempty(g)
                 vehicle{i}.g = g;
@@ -196,7 +181,17 @@ for t=1:NT
                 disp('WARN: old references');
                 t,i
             end
+            
+            for j=1:N
+                if i~=j
+                   pl.send_packet(i, j, []);
+                   if(pl.look_for_packets(j))
+                       pl.get_packet(j);
+                   end
+                end
+            end
         end
+        pl.update(vehicle, t*Tc_cg);
     end
     % Simulate for Tc_cg
     for i=1:N
@@ -206,13 +201,12 @@ for t=1:NT
     
     figure(1);
     
-    axis([0 40 0 40]);
+    axis equal
     for k=1:N
         % Trajectory
         %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
-        axis([0 40 0 40]);
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
@@ -222,13 +216,34 @@ for t=1:NT
             v = vehicle{k}.ctrl_sys.sys.xi(1:2);
             p =  vehicle{vehicle{k}.parent}.ctrl_sys.sys.xi(1:2);
             
+            if((v(1) - p(1)) == 0)
+                slope = inf;
+                intercept = p(1);
+            else
+                slope = (v(2) - p(2))/(v(1) - p(1));
+                intercept = -slope*p(1) + p(2);
+            end
+            
+            if(slope == inf)
+                line = @(x) (intercept);
+            else
+                line = @(x) (x*slope + intercept);
+            end
+            
 
-            plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
-
+            if(v(1) < p(1))
+                x_ax = v(1):0.01:p(1);
+            else
+                x_ax = p(1):0.01:v(1) ;
+            end
+            
+            if(slope == inf)
+                plot(ones(20,1)*p(1), ones(20,1)*line(p(2)), strcat(plot_color(k), ':'),'LineWidth',1);
+            else
+                plot(x_ax, line(x_ax), strcat(plot_color(k), ':'),'LineWidth',1);
+            end
         end
-        plot(vehicle{2}.planner);
-        plot(vehicle{3}.planner);
-        plot(vehicle{5}.planner);
+        plot(pl);
     end
     
     hold off;

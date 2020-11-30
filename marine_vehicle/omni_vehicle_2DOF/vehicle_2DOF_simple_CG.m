@@ -89,23 +89,22 @@ figure(1);
 axis([0 4 0 4]);
 % 
 % plot(ptp, 'k');
-hold on
 for i=1:N
     x = vehicle.ctrl_sys.sys.xi; % vehicle current state
     xc = vehicle.ctrl_sys.xci; % controller current state
     xa = [x;xc];
     ref = vehicle.planner.compute_reference(vehicle,xa);
-    ref = ref';
     [g,s] = vehicle.cg.compute_cmd(xa,ref);
 %      [g,s] = vehicle.cg.compute_cmd(xa,r);
     vehicle.ctrl_sys.sim(g,Tc_cg);
     cputime= [cputime,s.solvertime];
     yalmiptime=[yalmiptime,s.yalmiptime];
-%     plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'b.');
+%     plot(vehicle.ctrl_sys.sys.x(1,:),vehicle.ctrl_sys.sys.x(2,:),'b.');   
     plot(r(1), r(2), 'bo');
+    hold on;
     plot(g(1),g(2), 'kx');
     plot_2Dof_vehicle(vehicle, ref, vehicle.planner.radius,'RangeAxis',[0 4 0 4]);
-    hold on
+    hold off;
     drawnow
 end
 
