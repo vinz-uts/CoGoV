@@ -17,24 +17,24 @@ for i=1:N
     vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
 end
 
-% References
-xSamples = [1, 0, -1, 0];
-ySamples = [0, 1, 0, -1];
+
+thetax = 0:0.1:2*pi;
+
+xSamples = cos(thetax)';
+ySamples = sin(thetax)';
+
+
+time_interval = linspace(0,100,length(xSamples));
+
+
+vehicle{2}.planner = Trajectory_tracker(xSamples, ySamples,time_interval,4.5,[vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]');
 
 
 
-
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4 , 'tolerance', 0.7, 'radius', 2.5);
-vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]);
+vehicle{3}.planner = Trajectory_tracker(xSamples, ySamples,fliplr(time_interval),3,[vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]');
 
 
-
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4 , 'tolerance', 0.7, 'radius', 2.5);
-vehicle{3}.planner.transform(3, [vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]);
-
-
-vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false, 'tolerance', 0.1,'radius',2.5);
-vehicle{5}.planner.transform(6, [vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]);
+vehicle{5}.planner = Trajectory_tracker(xSamples, ySamples,fliplr(time_interval),6,[vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]',2);
 
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
@@ -44,6 +44,17 @@ r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
 
 vehicle{1}.planner = LinePlanner(r{1}, 'radius', 1.2);
 vehicle{4}.planner = LinePlanner(r{4}, 'radius', 1.2);
+
+
+figure(2);
+vehicle{2}.planner.plot_speed();
+
+figure(3);
+vehicle{3}.planner.plot_speed();
+
+figure(4);
+vehicle{5}.planner.plot_speed();
+
 
 %% Net configuration
 
@@ -155,7 +166,7 @@ for t=1:NT
                     if(isConnected(spanning_tree_tmp))
                         
                         % Remove the old parent proximity constraints
-                        pl.send_packet(i, index_min, [1,2]);
+                        pl.send_packet(i, j, [1,2]);
                         vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                         vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                         vehicle{vehicle{i}.parent}.cg.add_swarm_cnstr(i,'anticollision',d_min);
@@ -168,7 +179,7 @@ for t=1:NT
                         
                         % Add proximity constraints with new parent
                         if(pl.look_for_packets(vehicle{i}.parent))
-                            pl.get_packet(vehicle{i}.parent)
+                            pl.get_packet(obj, vehicle{i}.parent)
                             vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                             vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                             
@@ -194,7 +205,12 @@ for t=1:NT
                 xa = [xa;x;xc];
             end
             
-            r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
+            if(i==1 || i==4)
+                r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
+            else
+                r{i} = vehicle{i}.planner.compute_trajectory_reference(t*Tc_cg,vehicle{i}.g,vehicle{i}.ctrl_sys.sys.xi(1:2)); 
+            end
+            
             
             [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
             
@@ -249,7 +265,7 @@ for t=1:NT
         plot(vehicle{5}.planner);
         
     end
-    plot(pl);
+%     plot(pl);
     hold off;
     dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)),inf)];
     dist2 = [dist2, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)),inf)];

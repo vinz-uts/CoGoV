@@ -5,7 +5,7 @@ classdef (Abstract) Planner < handle
     properties
         p_old                       % Old position of vehicle 
         r_old                       % Old reference
-        
+        radius                      % Radius for intermediate reference 
         %%% recovery properties
         is_in_recovery              % If the recovery reference has been reached or not
         counter                     % How much time the previous refence is still the same 
@@ -21,6 +21,7 @@ classdef (Abstract) Planner < handle
         
         % Used to specify an initialization policy
         r = initialize_old_reference(obj, p);
+        
         
         % Used to specify the actions to be performed when the reference has not yet been reached
         [r, theta] = compute_referecence_when_not_reached(obj, p);
@@ -52,10 +53,11 @@ classdef (Abstract) Planner < handle
             obj.tol = 0.1;
             obj.counter  = 0;
             obj.rec_tolerance = 0.001;
+            obj.radius = 0.5; 
             %%%%%%%%%%%%
             
             %%%%%%% Variable arguments management %%%%%%%
-            validnames = {'recovery', 'rec_tolerance', 'rec_from_collision', 'rho_step'};
+            validnames = {'recovery', 'rec_tolerance', 'rec_from_collision','radius'};
             
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
@@ -69,6 +71,8 @@ classdef (Abstract) Planner < handle
                         obj.rec_tolerance =  values{pos};
                     case validnames{3}
                         obj.recovery_from_collision =  values{pos};
+                    case validnames{4}
+                        obj.radius = values{pos};
                 end
             end 
             %%%%%%%%%%%%
@@ -135,15 +139,88 @@ classdef (Abstract) Planner < handle
                 % reset interanl state for recovery management
                 obj.counter = 0;
             end
-            % save state
+                        % save state
             if(not(iscolumn(r)))
                 r = r';
             end
+            
+            if(norm(p - r) > obj.radius)
+               r = inner_reference(obj, p, r);
+            end
+             
+                        % save state
+            if(not(iscolumn(r)))
+                r = r';
+            end
+
+            
+            
             obj.r_old = r;
             obj.p_old = p;
        end
        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        
+         function ris = inner_reference(obj, p, r) % inherited abstract method
+            if(r(1) - p(1) > 0)
+                direction = 1;
+            else
+                direction = -1;
+            end
+            
+            if((r(1) - p(1)) == 0)
+                slope = inf;
+                intercept = p(1);
+                if(r(2) - p(2) < 0)
+                    direction = 1;
+                else
+                    direction = -1;
+                end
+            else
+                slope = (r(2) - p(2))/(r(1) - p(1));
+                intercept = -slope*p(1) + p(2);
+            end
+            
+            [xout,yout] = linecirc(slope, intercept,p(1), p(2), obj.radius);
+            % Choose the right poit to use as an intermediate reference
+            if(slope == inf)
+                if(direction < 0)
+                    if(yout(1) > yout(2))
+                        ris(1) = xout(1);
+                        ris(2) = yout(1);
+                    else
+                        ris(1) = xout(2);
+                        ris(2) = yout(2);
+                    end
+                else
+                    if(yout(1) < yout(2))
+                        ris(1) = xout(1);
+                        ris(2) = yout(1);
+                    else
+                        ris(1) = xout(2);
+                        ris(2) = yout(2);
+                    end
+                end
+            else
+                if(direction < 0)
+                    if(xout(1) < xout(2))
+                        ris(1) = xout(1);
+                        ris(2) = yout(1);
+                    else
+                        ris(1) = xout(2);
+                        ris(2) = yout(2);
+                    end
+                else
+                    if(xout(1) > xout(2))
+                        ris(1) = xout(1);
+                        ris(2) = yout(1);
+                    else
+                        ris(1) = xout(2);
+                        ris(2) = yout(2);
+                    end
+                end
+            end
+        end
+        
        %%%%%%%%%%%%% Recovery methods %%%%%%%%%%%%%%%%%%%%%
        function [r_recovery, theta] = compute_anticollision_recovery(obj, sys, xa)
             % Extract current state
@@ -233,6 +310,8 @@ classdef (Abstract) Planner < handle
            length(theta);
            error('Not implemented');
        end
+       
+       
        %%%%%%%%%%%%%%%%%%%%%%%%%%
        
     end

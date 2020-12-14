@@ -6,7 +6,7 @@ addpath('../../../../marine_vehicle');      addpath('../../../../marine_vehicle/
 addpath(genpath('../../../../util'));       addpath('../../../../CG');
 addpath(genpath('../../../../tbxmanager'));
 
-vehicle_2DOF_model_2
+vehicle_3DOF_model_2
 
 %%%% Simulation Settings
 %% Init vehicles
@@ -14,26 +14,20 @@ N = 5; % number of vehicles
 vehicle = cell(1, N);
 for i=1:N
     vehicle{i} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
-    vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
+    vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20,0);
 end
 
 % References
 xSamples = [1, 0, -1, 0];
 ySamples = [0, 1, 0, -1];
 
-
-
-
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4 , 'tolerance', 0.7, 'radius', 2.5);
+vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4 , 'tolerance', 0.7);
 vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]);
 
-
-
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4 , 'tolerance', 0.7, 'radius', 2.5);
+vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4 , 'tolerance', 0.7);
 vehicle{3}.planner.transform(3, [vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]);
 
-
-vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false, 'tolerance', 0.1,'radius',2.5);
+vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false, 'tolerance', 0.1);
 vehicle{5}.planner.transform(6, [vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]);
 
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
@@ -80,8 +74,8 @@ Vy = 0.7; % max abs of speed along y - [m/s]
 T_max = 30; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
-Psi = 1000*eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
+Psi = 1000*eye(3); % vehicle's references weight matrix
+k0 = 25; % prediction horizon
 
 %%% Vector for distance for plotting purposes
 dist = [];
@@ -124,11 +118,6 @@ plot_color = ['b', 'g', 'k', 'r', 'm'];
 pl = Phisical_Layer(N, 200, 0, 1);
 pl.update(vehicle, 0);
 
-% 
-% for i=5:N
-%     vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
-% end
-
 round = 1;
 for t=1:NT
     for i=1:N
@@ -155,7 +144,7 @@ for t=1:NT
                     if(isConnected(spanning_tree_tmp))
                         
                         % Remove the old parent proximity constraints
-                        pl.send_packet(i, index_min, [1,2]);
+                        pl.send_packet(i, j, [1,2]);
                         vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                         vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                         vehicle{vehicle{i}.parent}.cg.add_swarm_cnstr(i,'anticollision',d_min);
@@ -168,7 +157,7 @@ for t=1:NT
                         
                         % Add proximity constraints with new parent
                         if(pl.look_for_packets(vehicle{i}.parent))
-                            pl.get_packet(vehicle{i}.parent)
+                            pl.get_packet(obj, vehicle{i}.parent)
                             vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                             vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                             
@@ -194,10 +183,15 @@ for t=1:NT
                 xa = [xa;x;xc];
             end
             
-            r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
-            
+            [r{i},r{i}(3)] = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
+     
             [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
             
+                                    
+            if(length(r{i})>2 && (not(norm(g(1:2)-vehicle{i}.ctrl_sys.sys.xi(1:2))<=1e-7))) 
+                g(3) = atan2(g(2)-vehicle{i}.ctrl_sys.sys.xi(2),g(1)-vehicle{i}.ctrl_sys.sys.xi(1));
+            end
+     
             if ~isempty(g)
                 vehicle{i}.g = g;
             else
@@ -224,14 +218,15 @@ for t=1:NT
     
     figure(1);
     
-    axis([0 40 0 40]);
+    axis([5 35 5 40]);
     for k=1:N
         % Trajectory
-        %         axis([0 5 -4 4])
-        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
+        plot_trajectory(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end),vehicle{k}.ctrl_sys.sys.x(3,end),33,0.5,plot_color(k));
         hold on;
-        axis([0 40 0 40]);
-        plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
+        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
+        
+        axis([5 35 5 40]);
+%         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
@@ -244,12 +239,13 @@ for t=1:NT
             plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
 
         end
-        plot(vehicle{2}.planner);
-        plot(vehicle{3}.planner);
-        plot(vehicle{5}.planner);
+
         
     end
-    plot(pl);
+    plot(vehicle{2}.planner);
+    plot(vehicle{3}.planner);
+    plot(vehicle{5}.planner);
+    %     plot(pl);
     hold off;
     dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)),inf)];
     dist2 = [dist2, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)),inf)];

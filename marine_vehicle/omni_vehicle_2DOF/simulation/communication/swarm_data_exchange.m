@@ -132,7 +132,7 @@ for t=1:NT
                     if(isConnected(spanning_tree_tmp))
                         
                         % Remove the old parent proximity constraints
-                        pl.send_packet(i, j, [1,2]);
+                        pl.send_packet(i, index_min, [1,2]);
                         vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                         vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                         vehicle{vehicle{i}.parent}.cg.add_swarm_cnstr(i,'anticollision',d_min);
@@ -145,7 +145,7 @@ for t=1:NT
                         
                         % Add proximity constraints with new parent
                         if(pl.look_for_packets(vehicle{i}.parent))
-                            pl.get_packet(obj, vehicle{i}.parent)
+                            pl.get_packet(vehicle{i}.parent)
                             vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                             vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                             

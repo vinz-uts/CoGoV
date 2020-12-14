@@ -1,4 +1,4 @@
-function plot_trajectory(x,y,th,N,d)
+function plot_trajectory(x,y,th,N,d,color)
     %% PLOT_TRAJECTORY - plot trajectory with oriented points
     %  Plot the trajectory of [x,y,ϑ] data with sparse oriented points.
     %  N := points density
@@ -20,7 +20,15 @@ function plot_trajectory(x,y,th,N,d)
     v = d_.*[1 -1 -0.6 -1 1;0 -1 0 1 0];% base "triangle" vertices
     
     %figure();
-    plot(x,y);  hold on; % plot trajectory
+   
+    
+    plot(x,y);
+    
+    c = ishold;
+
+    
+    
+    hold on; % plot trajectory
     axis equal
     
     % plot points orientation
@@ -28,5 +36,12 @@ function plot_trajectory(x,y,th,N,d)
         R = [ cos(th(i)) -sin(th(i)) ;
               sin(th(i)) cos(th(i)) ];
         p_i = [x(i),y(i)]'+R*v;
-        plot(p_i(1,:),p_i(2,:),'r');
+        plot(p_i(1,:),p_i(2,:),color);
     end
+        
+    if(c)
+        hold off;
+    else
+        hold on;
+    end
+

@@ -4,7 +4,6 @@ classdef LinePlanner < Planner
     properties
         points              % A vector containing all points that have to be reached
         point_iterator      % Index of curret point to be reached
-        radius              % Variation in radians used to get the next reference
         line                % Function of the strait line used for debug feature
         slope               % line slope
         intercept           % line y intercept (x intercept with inf slope)

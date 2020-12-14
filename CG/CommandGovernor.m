@@ -60,32 +60,6 @@ classdef CommandGovernor < handle
                 cnstr = [cnstr obj.T*(obj.Hc*xk+obj.L*w) <= obj.gi];
             end
             
-            %%% Uncomment to test quadratic norm constraints
-%             
-%             vect =((obj.Hc/(eye(size(obj.Phi,1))-obj.Phi)*obj.G+obj.L));
-%             vect = vect(end-1:end,end-1:end);
-%             
-%             cnstr = norm(vect*w)^2 <= 10 ;
-%             
-%             xk = x;
-%             
-%             for k = 1:obj.k0
-%                 xk = obj.Phi*xk+obj.G*w;
-%                 vect = obj.Hc*xk;
-%                 vect = vect(end-1:end);
-%                 cnstr = [cnstr norm(vect)^2 <= 10];
-%             end
-%             
-            
-            %%% Uncomment to plot constraints
-%             plot(cnstr);
-%             hold on;
-            
-            %%% Uncomment to plot Convceex Hull of constraits sets
-            %             hulla = hull(cnstr);
-            %             plot(hull);
-            %             hold on;
-            
             % Objective function
             obj_fun = (r-w)'*obj.Psi*(r-w);
             % Solver options
