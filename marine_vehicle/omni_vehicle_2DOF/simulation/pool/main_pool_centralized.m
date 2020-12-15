@@ -73,14 +73,7 @@ k0 = 10; % prediction horizon
 
 %% Augmented System construction
 % Augmented neighbour matrix
-% | ?(1)           |
-% |      ?(i)      |
-% |           ?(N) |
 Phi = [];    G = [];    Hc = [];    L = [];
-%Phi = vehicle{1}.ctrl_sys.Phi;
-%G = vehicle{1}.ctrl_sys.G;
-%Hc = vehicle{1}.ctrl_sys.Hc;
-%L = vehicle{1}.ctrl_sys.L;
 for i=1:N
     Phi = blkdiag(Phi,vehicle{i}.ctrl_sys.Phi);
     G = blkdiag(G,vehicle{i}.ctrl_sys.G);
@@ -155,21 +148,14 @@ T_ = [ 1  0  0  0  0  0 ;
 gi_ = [Max_x,Max_x,Max_y,Max_y,T_max,T_max,T_max,T_max]';
 
 T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
-% Ta = [];    ga = [];
-% for j=1:N
-%     Ta = blkdiag(Ta,T_);
-%     ga = [ga;gi_];
-% end
-% T = [Ta;T];     gi = [ga;gi];
 
 cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
 %% Planner
-limits = [-Max_x, Max_x, Max_y, -Max_y];
 
-pl(1) =  Border_Planner([Max_x, Max_y], 0.5, 'radius', 1);
-pl(2) =  Border_Planner([Max_x, Max_y], -0.7, 'radius', 1);
-pl(3) =  Border_Planner([Max_x, Max_y], 0.1, 'radius', 1);
+vehicle{1}.planner =  Border_Planner([Max_x, Max_y], 0.5, 'radius', 1);
+vehicle{2}.planner =  Border_Planner([Max_x, Max_y], -0.7, 'radius', 1);
+vehicle{3}.planner =  Border_Planner([Max_x, Max_y], 0.1, 'radius', 1);
 
 % Color the net
 colors = [0,1];
@@ -177,26 +163,30 @@ vehicle{1}.color = colors(1);
 vehicle{2}.color = colors(2);
 vehicle{3}.color = colors(2);
 
+plot_color = ['b', 'g', 'k'];
+
+
 %% Simulation Colored Round CG
 Tf = 30; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
 %%% Set blockedd to true to ensure that vehicle 3 stands still
-blockedd=true;
+blockedd=false;
 reference3= vehicle{3}.ctrl_sys.sys.xi;
 
 % Perimeter plotting
-figure(1);
-hold on;
+
 x_plot = -Max_x:0.1:Max_x;
 y_plot = -Max_y:0.1:Max_y;
-plot(ones(size(y_plot))*x_plot(1), y_plot);
-plot(x_plot, ones(size(x_plot))*y_plot(1));
-plot(ones(size(y_plot))*x_plot(end), y_plot);
-plot(x_plot, ones(size(x_plot))*y_plot(end));
+
 axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
-dist=[];
+
+% Vector needed to track distance between vehicles
+dist12=[];
+dist23=[];
+dist13=[]; 
+
 hold on;
 nr = size(reference3(1:2),1); % size of single vehicle reference
 r=[];
@@ -205,19 +195,18 @@ round = 1;
 
 for t=1:NT
     for i=1:N
-        plan = pl(i);
-        
-        r{i} = plan.compute_reference(vehicle{i}, []);
-        
+        r{i} =  vehicle{i}.planner.compute_reference(vehicle{i}, []);
+        % If we want the third vehicle to stand still
+        % we set variable blockedd to true
         if(i==3 && blockedd)
             r{3}=reference3(1:2);
         end
     end
     xa = [];
-     for i=1:N
-         x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
-         xc = vehicle{i}.ctrl_sys.xci; % controller current state
-         xa = [xa;x;xc];
+    for i=1:N
+        x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
+        xc = vehicle{i}.ctrl_sys.xci; % controller current state
+        xa = [xa;x;xc];
          r_ = [];
          for j=1:N
              r_ = [r_;r{j}];
@@ -243,38 +232,63 @@ for t=1:NT
     end
     
     round = rem(round,length(colors))+1;
+    % Live plot
+    figure(1);  clf;
+    
+    hold on;
+    
+    % Left side plot
+    plot(ones(size(y_plot))*x_plot(1), y_plot,'k');
+    % Lower side plot
+    plot(x_plot, ones(size(x_plot))*y_plot(1), 'k');
+    % Right side plot
+    plot(ones(size(y_plot))*x_plot(end), y_plot, 'k');
+    % Upper side plot
+    plot(x_plot, ones(size(x_plot))*y_plot(end), 'k');
+    
     
     for k=1:N
-        % Trajectory
-        figure(1);  hold on;
+
+        % Plot vehicles trajectory
+        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         
-        if(k==1)
-            plot(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),'b.');
-        end
-        
-        if(k==2)
-            
-            plot(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),'r.');
-        end
-        
-        if(k==3)
-            plot(vehicle{3}.ctrl_sys.sys.x(1,:),vehicle{3}.ctrl_sys.sys.x(2,:),'k.');
-        end
+        axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
         
         
+        % Plot vehicles position 
+        plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
+        
+        % Plot vehicles CG references
+        plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
     end
+    
     if(t==1)
-        legend('Left Border', 'Lower Border','Right Border', 'Upper Border','Trajectory v1', 'Trajectory v2','Trajectory v3','AutoUpdate','off');
         title('Pool Scenario Simulation');
         xlabel('x [m]');
         ylabel('y [m]');
     end
     
     drawnow;
-    dist=[dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+    dist12 =[dist12, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+    dist23 =[dist23, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
+    dist13 =[dist13, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
 end
+
 figure;
-plot(0:Tc_cg:Tf-Tc_cg, dist);
+subplot(3, 1, 1);
+plot(0:Tc_cg:Tf-Tc_cg, dist12);
 title('Distance between vehicle 1 and vehicle 2');
+xlabel('time [s]');
+ylabel('distance [m]');
+
+subplot(3, 1, 2);
+plot(0:Tc_cg:Tf-Tc_cg, dist23);
+title('Distance between vehicle 2 and vehicle 3');
+xlabel('time [s]');
+ylabel('distance [m]');
+
+subplot(3, 1, 3);
+plot(0:Tc_cg:Tf-Tc_cg, dist13);
+title('Distance between vehicle 1 and vehicle 3');
 xlabel('time [s]');
 ylabel('distance [m]');

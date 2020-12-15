@@ -8,8 +8,8 @@ clear all;
 close all;
 
 %% Load vehicles' model matrices
-addpath('../../../../marine_vehicle');        addpath(genpath('../../../../util'));
-addpath(genpath('../../../../tbxmanager'));   addpath('../../../../CG');
+addpath(genpath('../../../../util'));
+
 
 %% Comment/Uncomment to choose precompensation technique
 vehicle_2DOF_model_2 % R-stability controller (continuous time desing)
@@ -44,9 +44,9 @@ vehicle{2}.color = colors(2);
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 200; % maximum distance between vehicles - [m]
+% ||(x,y)_i-(x,y)_j||>d_min
+% ||(x,y)_i-(x,y)_j||<d_max (not used)  
+d_max = 200;
 d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
 % Vehicles input/speed constraints
@@ -135,12 +135,6 @@ T_ = [ 0  0  1  0 ;
 gi_ = [T_max,T_max,T_max,T_max]';
 
 T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
-% Ta = [];    ga = [];
-% for j=1:N
-%     Ta = blkdiag(Ta,T_);
-%     ga = [ga;gi_];
-% end
-% T = [Ta;T];     gi = [ga;gi];
 
 cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
@@ -149,8 +143,8 @@ Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-figure(1);  hold on;
-axis([-3,3,-3,3]);  axis('equal');
+plot_color = ['b', 'g'];
+
 dist = [];
 round = 1;
 
@@ -181,14 +175,8 @@ for t=1:NT
         
     end
     [g,s] = cg.compute_cmd(xa,r_);
-     %%%%%%%% Desired reference plotting 
-    plot(r{1}(1), r{1}(2), 'bo');
-    plot(r{2}(1), r{2}(2), 'go');
     
     if ~isempty(g)
-        %%%% Plot CG reference 
-        plot(g(1), g(2), 'b*');
-        plot(g(3), g(4), 'gx');
         cputime= [cputime,s.solvertime];
         yalmiptime=[yalmiptime,s.yalmiptime];
         for i=1:N
@@ -204,16 +192,23 @@ for t=1:NT
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
+    % Live plot
+    figure(1);  clf;
     
+    hold on;
+    
+    
+    %%%%%%% live plot %%%%%%%
     for k=1:N
-        % Trajectory
-        figure(1);
-        hold on;
-        if(k==1)
-            plot(vehicle{1}.ctrl_sys.sys.x(1,:),vehicle{1}.ctrl_sys.sys.x(2,:),'b.');
-        else
-            plot(vehicle{2}.ctrl_sys.sys.x(1,:),vehicle{2}.ctrl_sys.sys.x(2,:),'g.');
-        end
+
+    	% Plot vehicles trajectory
+        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
+        
+        % Plot vehicles position 
+        plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
+        
+        % Plot vehicles CG references
+        plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
         
     end
     
@@ -224,6 +219,9 @@ for t=1:NT
     end
     
     drawnow;
+    %%%%%%%%%%%%%
+    
+    
     dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
 end
 

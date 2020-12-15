@@ -32,9 +32,7 @@ adj_matrix = [-1  1 ;
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
-d_max = 200; % maximum distance between vehicles - [m]
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_min = 0.3; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
 
 % Vehicles constraints
@@ -49,28 +47,21 @@ for i=1:N
     vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
     for j=1:N
         if adj_matrix(i,j) == 1 % i,j is neighbour
-            vehicle{i}.cg.add_swarm_cnstr(j,'proximity',d_max,'anticollision',d_min);
+            vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
         end
     end
 end
 %% Planner
-center = [0,0]';
+
+%%% Data manipulation to create oil stain form
 
 xSamples = [1, 0.8, 0.5, 0, -0.25, -0.6, -0.75 -1, -1, -0.5, 0, 0.35, 0.7]';
 ySamples = [0, 0.45, 0.7, 1, 0.9, 0.75, 0.3, 0, -0.5, -0.7, -1, -1, -0.45]';
 
-% xSamples = [1, 0, -1, 0]';
-% ySamples = [0, 1, 0, -1]';
 
-ptp1 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'recovery', 15, 'rec_from_collision', true);
+vehicle{1}.planner = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'recovery', 15, 'rec_from_collision', true);
 
-ptp2 = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'clockwise', false, 'recovery', 15, 'rec_from_collision', true);
-
-pl(1) =  ptp1;
-pl(2) =  ptp2;
-
-% plot(ptp1, 'k');
-% plot(ptp2, 'r');
+vehicle{2}.planner = Polar_trajectory_planner(1.3*xSamples, 1.3*ySamples, 'clockwise', false, 'recovery', 15, 'rec_from_collision', true);
 
 
 % Color the net
@@ -78,17 +69,17 @@ colors = [0,1];
 vehicle{1}.color = colors(1);
 vehicle{2}.color = colors(2);
 
+plot_color = ['b', 'g'];
+
 
 %% Simulation Colored Round CG
 Tf = 75; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 
 NT = ceil(Tf/Tc_cg); % simulation steps number
-zerr = [0,0]';
-figure(1);
-hold on;
 
-axis([-3,3, -3,3]);
+r{1}=vehicle{1}.ctrl_sys.sys.xi(1:2);
+r{2}=vehicle{2}.ctrl_sys.sys.xi(1:2);
 
 dist = [];
 
@@ -110,12 +101,10 @@ for t=1:NT
                     xa = [xa;x;xc];
                 end
             end
+
+            r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
             
-            plan = pl(i);
-            
-            r= plan.compute_reference(vehicle{i},xa);
-            
-            g = vehicle{i}.cg.compute_cmd(xa, r, g_n);
+            g = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
             
             if ~isempty(g)
                 vehicle{i}.g = g;
@@ -134,36 +123,20 @@ for t=1:NT
     end
     round = rem(round,length(colors))+1;
     
-    figure(1);  
-    plot(ptp1, 'k');
+   
+  % Live plot
+    figure(1);  clf;
+    plot(vehicle{1}.planner, 'k');
     hold on;
-    
-    axis equal
+    plot(vehicle{2}.planner, 'k');
     for k=1:N
         % Trajectory
-        
-        
-        if(k==1)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), '-.r','LineWidth',0.8);
-            plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), 'or','MarkerFaceColor','r','MarkerSize',7);
-            plot(r(1), r(2), 'or');
-            plot(vehicle{k}.g(1), vehicle{k}.g(2), 'xr');
-            
-        end
-        
-        if(k==2)
-            plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), '-.k','LineWidth',0.8);
-            plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), 'ok','MarkerFaceColor','k','MarkerSize',7);
-            plot(r(1), r(2), 'ok');
-            plot(vehicle{k}.g(1), vehicle{k}.g(2), 'xk');
-        end
-        
+
+        plot_2Dof_vehicle(vehicle{k}, r{i}, d_min,'Color', plot_color(k), 'RangeAxis', [-3,3, -3,3]);
         
     end
-    hold off;
     
     if(t==1)
-        legend('Trajectory v1', 'Trajectory v2','AutoUpdate','off');
         title('Concentric Circular Scenario Simulation');
         xlabel('x [m]');
         ylabel('y [m]');

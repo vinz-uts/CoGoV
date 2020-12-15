@@ -13,7 +13,6 @@ classdef Border_Planner < Planner
     % the vehicle reaches the edges
     properties
         limits          % A vector containing all points that have to be reached
-        radius              % Variation in radians used to get the next reference
         line                % Function of the strait line used for debug feature
         slope               % line slope
         intercept           % line y intercept (x intercept with inf slope)
@@ -34,7 +33,7 @@ classdef Border_Planner < Planner
             
             % Default values
             obj.radius = 0.5;
-            obj.tol = 0.1;
+            obj.tol = 0.05;
             obj.slope = starting_slope;
             obj.direction = 1;
             obj.limits = struct('x_l', -boundaries(1), 'x_r', boundaries(1), 'y_t', boundaries(2), 'y_b', -boundaries(2));
@@ -61,7 +60,7 @@ classdef Border_Planner < Planner
         
          function r = initialize_old_reference(obj, p) % inherited abstract method
              obj.update_line(p, obj.slope, obj.direction);
-             r = obj.compute_next_reference(p);
+             r = obj.border_reference;
         end
         
         function [r, theta] = compute_referecence_when_not_reached(obj, p) % inherited abstract method
@@ -84,59 +83,60 @@ classdef Border_Planner < Planner
                     norm(p - obj.border_reference) < obj.tol)
                 obj.update_line(p, -obj.slope, obj.direction);
             end
-            r = compute_next_reference(obj, p);
-            
-            % adjust the reference if it exceeds the final one
-            if(obj.direction < 0)
-                if(r(1) < obj.border_reference(1))
-                    r = obj.border_reference;
-                end
-            else
-                if(r(1) > obj.border_reference(1))
-                    r = obj.border_reference;
-                end
-            end
-            
+%             r = compute_next_reference(obj, p);
+%             
+%             % adjust the reference if it exceeds the final one
+%             if(obj.direction < 0)
+%                 if(r(1) < obj.border_reference(1))
+%                     r = obj.border_reference;
+%                 end
+%             else
+%                 if(r(1) > obj.border_reference(1))
+%                     r = obj.border_reference;
+%                 end
+%             end
+%             
+            r = obj.border_reference;
             theta = atan2(r(2)-p(2),r(1)-p(1));
            
         end
         
-        function r = compute_next_reference(obj, p)
-             r = obj.border_reference; % get the not intermediate reference
-             % computentersections of circles and lines in Cartesian plane
-             [xout,yout] = linecirc(obj.slope, obj.intercept,p(1), p(2), obj.radius); 
-             if(isnan(xout(1)) || isnan(yout(1))) % if it can not be found compute a different line
-                 if(r(1) - p(1) > 0)
-                     obj.direction = 1;
-                 else
-                     obj.direction = -1;
-                 end
-                 obj.slope = (r(2) - p(2))/(r(1) - p(1));
-                 obj.intercept = -obj.slope*p(1) + p(2);
-                 
-                 obj.line = @(x) (x*obj.slope + obj.intercept);
-                 [xout,yout] = linecirc(obj.slope, obj.intercept,p(1), p(2), obj.radius);
-             end
-             
-             % Choose the right poit to use as an intermediate reference
-             if(obj.direction < 0)
-                 if(xout(1) < xout(2))
-                     r(1) = xout(1);
-                     r(2) = yout(1);
-                 else
-                     r(1) = xout(2);
-                     r(2) = yout(2);
-                 end
-             else
-                if(xout(1) > xout(2))
-                     r(1) = xout(1);
-                     r(2) = yout(1);
-                 else
-                     r(1) = xout(2);
-                     r(2) = yout(2);
-                 end
-             end
-        end
+%         function r = compute_next_reference(obj, p)
+%              r = obj.border_reference; % get the not intermediate reference
+%              % computentersections of circles and lines in Cartesian plane
+%              [xout,yout] = linecirc(obj.slope, obj.intercept,p(1), p(2), obj.radius); 
+%              if(isnan(xout(1)) || isnan(yout(1))) % if it can not be found compute a different line
+%                  if(r(1) - p(1) > 0)
+%                      obj.direction = 1;
+%                  else
+%                      obj.direction = -1;
+%                  end
+%                  obj.slope = (r(2) - p(2))/(r(1) - p(1));
+%                  obj.intercept = -obj.slope*p(1) + p(2);
+%                  
+%                  obj.line = @(x) (x*obj.slope + obj.intercept);
+%                  [xout,yout] = linecirc(obj.slope, obj.intercept,p(1), p(2), obj.radius);
+%              end
+%              
+%              % Choose the right poit to use as an intermediate reference
+%              if(obj.direction < 0)
+%                  if(xout(1) < xout(2))
+%                      r(1) = xout(1);
+%                      r(2) = yout(1);
+%                  else
+%                      r(1) = xout(2);
+%                      r(2) = yout(2);
+%                  end
+%              else
+%                 if(xout(1) > xout(2))
+%                      r(1) = xout(1);
+%                      r(2) = yout(1);
+%                  else
+%                      r(1) = xout(2);
+%                      r(2) = yout(2);
+%                  end
+%              end
+%         end
         
         function update_line(obj, p, slope, direction)
             obj.intercept = p(2) - slope*p(1); 
@@ -167,12 +167,12 @@ classdef Border_Planner < Planner
                 if((obj.direction < 0 && obj.slope < 0))
                     r = [obj.limits.x_l, obj.line(obj.limits.x_l)]';
                     if(not(obj.is_admissible(r)))
-                        r = [inv_line(obj.r_old, obj.limits.y_t), obj.limits.y_t]';
+                        r = [inv_line(obj.limits.y_t), obj.limits.y_t]';
                     end
                 else % upper right corner
                     r = [obj.limits.x_r, obj.line(obj.limits.x_r)]';
                     if(not(obj.is_admissible(r)))
-                        r = [inv_line(obj.r_old, obj.limits.y_t), obj.limits.y_t]';
+                        r = [inv_line(obj.limits.y_t), obj.limits.y_t]';
                     end
                 end
             end

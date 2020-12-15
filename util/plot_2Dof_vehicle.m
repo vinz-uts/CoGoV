@@ -10,7 +10,7 @@ function  plot_2Dof_vehicle(vehicle, r, d_min, varargin)
                  'Traj_style'       '-';
                  'MarkerSize',      10;
                  'MarkerStyle'      'o';
-                 'RangeAxis'         [0 10 0 10]}; 
+                 'RangeAxis'         []}; 
     
     nargs = length(varargin);
     params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
@@ -39,11 +39,17 @@ function  plot_2Dof_vehicle(vehicle, r, d_min, varargin)
         end
     end
     
+    
     % Trajectory plot
     plot(vehicle.ctrl_sys.sys.x(1,:), vehicle.ctrl_sys.sys.x(2,:), strcat(plot_pair{6, 2}, plot_pair{1, 2}),...
          plot_pair{2, 1}, plot_pair{2, 2});
     hold on;
-    axis(plot_pair{9,2});
+    if(not(isempty(plot_pair{9,2})))
+        axis(plot_pair{9,2});
+    else
+        axis equal;
+    end
+   
     % Vehicle current position plot
     plot(vehicle.ctrl_sys.sys.x(1,end), vehicle.ctrl_sys.sys.x(2,end), strcat(plot_pair{8, 2}, plot_pair{1, 2}),...
         'MarkerFaceColor', plot_pair{1, 2}, plot_pair{7, 1}, plot_pair{7, 2});
