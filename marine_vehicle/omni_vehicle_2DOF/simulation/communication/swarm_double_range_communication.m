@@ -17,24 +17,23 @@ for i=1:N
     vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
 end
 
+%% Trajectory Tracking Approach to follow desired path
 
+% Initializing the variables 
 thetax = 0:0.1:2*pi;
 
 xSamples = cos(thetax)';
 ySamples = sin(thetax)';
 
-
 time_interval = linspace(0,100,length(xSamples));
-
 
 vehicle{2}.planner = Trajectory_tracker(xSamples, ySamples,time_interval,4.5,[vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]');
 
-
-
 vehicle{3}.planner = Trajectory_tracker(xSamples, ySamples,fliplr(time_interval),3,[vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]');
 
-
 vehicle{5}.planner = Trajectory_tracker(xSamples, ySamples,fliplr(time_interval),6,[vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]');
+
+% Initializing references 
 
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
@@ -45,25 +44,17 @@ r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
 vehicle{1}.planner = LinePlanner(r{1}, 'radius', 1.2);
 vehicle{4}.planner = LinePlanner(r{4}, 'radius', 1.2);
 
+%%% Speed profile of TT approach plotting 
 
 figure(2);
 vehicle{2}.planner.plot_speed();
-
 figure(3);
 vehicle{3}.planner.plot_speed();
-
 figure(4);
 vehicle{5}.planner.plot_speed();
 
 
 %% Net configuration
-
-adj_matrix = [-1  1  0  0  1;
-    1 -1  1  0  0;
-    0  1 -1  1  0;
-    0  0  1 -1  1;
-    1  0  0  1 -1];
-
 spanning_tree =[-1  1  0  0  0;
     1 -1  1  0  0;
     0  1 -1  1  0;
@@ -71,6 +62,8 @@ spanning_tree =[-1  1  0  0  0;
     0  0  0  1 -1];
 %%%%%%%%%%%%%
 
+% It is assumed that vehicle 1 is the root of the spanning tree, and cant
+% change
 vehicle{1}.parent = 0;
 
 for i=2:N
@@ -80,8 +73,8 @@ end
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
+% ||(x,y)_i-(x,y)_j|| < d_max
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 12;  % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
@@ -121,6 +114,7 @@ for i=1:N
     vehicle{i}.color = colors(i);
 end
 
+plot_color = ['b', 'g', 'k', 'r', 'm'];
 
 %% Communication constraints
 R   = d_max+5; % maximum distance of communications - [m]
@@ -134,16 +128,17 @@ Tf = 150; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-plot_color = ['b', 'g', 'k', 'r', 'm'];
-
+%% Communication Layer Initilization
 pl = Phisical_Layer(N, 200, 0, 1);
 pl.update(vehicle, 0);
 
+% Vector used to consider eventual virtual references coming from the plug
+% in operation 
 virtual = zeros(N,1);
-%
-% for i=5:N
-%     vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
-% end
+
+% Vectors needed to analyze computational aspects
+cputime= [];
+yalmiptime=[];
 
 round = 1;
 for t=1:NT
@@ -154,7 +149,7 @@ for t=1:NT
             d_ijmin = 100;
             for j=1:N
                 if i~=j
-                  
+                  % Search for the closest vehicle
                     d_ij = norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{j}.ctrl_sys.sys.xi(1:2));
                     if not(vehicle{i}.parent==j) && not(vehicle{i}.parent==0)
                         if(d_ij < d_ijmin)
@@ -164,7 +159,10 @@ for t=1:NT
                     end
                     if d_ij <= R
                         if d_ij > R__ && ~isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh, 1)) && not(vehicle{i}.parent==j) && not(vehicle{j}.parent==i)
-                            %remove_connectivity_constraints();
+                            
+                            % If the vehicle is not the parent and exceedes the communication range
+                            % then a plug out operation is performed 
+                            
                             fprintf('Unplugged: %d - %d \n',i,j);
                             % Remove constraints and send plug-out message to v{j}
                             pl.send_packet(i, j, [1,2]);
@@ -176,7 +174,10 @@ for t=1:NT
                             end
            
                         elseif d_ij <= R__ && d_ij > R_ && not(vehicle{i}.parent==j) && not(vehicle{j}.parent==i)&& ~isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh, 1))
-                            %remove_anticollision_constraints();
+                            % If the vehicle is not the parent and exceedes
+                            % the outer anticollision range then a plug out
+                            % operation regarding anticollision constraints
+                            % is performed
                             pl.send_packet(i, j, [1,2]);
                             vehicle{i}.cg.remove_swarm_cnstr(j);
                             if(pl.look_for_packets(j))
@@ -185,7 +186,10 @@ for t=1:NT
                             end
                         elseif d_ij <= R_dmin && isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh, 1))
                             
-                            %add_anticollision_constraints();
+                            % If the vehicle is not already a neighbor and
+                            % is closer than the inner anticollision range
+                            % then a plug in operation is needed 
+                        
                             if(vehicle{i}.pending_plugin == -1 || vehicle{i}.pending_plugin == 0)  && ...
                                     vehicle{j}.pending_plugin == -1 && ... %%% No plugin pending
                                     isempty(find(vehicle{j}.cg.id==vehicle{i}.cg.neigh, 1)) %  ||v{i}-v{j}||∞ ≤ R && not already pending plug-in request
@@ -307,8 +311,7 @@ for t=1:NT
                                         vehicle{i}.pending_plugin = -1;
                                         virtual(i) = false;
                                     end
-                                    
-                                    
+                                                                    
                                     % Send unfreeze request to v{j} neighbours
                                     for k = vehicle{j}.cg.neigh
                                         pl.send_packet(j, k, [1,2]);
@@ -331,7 +334,6 @@ for t=1:NT
                             if((vehicle{i}.pending_plugin==0) && norm(r{i}-vehicle{i}.ctrl_sys.sys.xi(1:2))< 0.1)
                                 vehicle{i}.pending_plugin = -1;
                                 virtual(i) = false; 
-
                             end
                         end
                         
@@ -342,6 +344,9 @@ for t=1:NT
                 end
             end
             if(not(vehicle{i}.parent==0))
+                % Check if the distance between the actual parent is larger
+                % than the distance with the closest vehicle
+                
                 if(d_ijmin < norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{vehicle{i}.parent}.ctrl_sys.sys.xi(1:2)))
                     spanning_tree_tmp = spanning_tree;
                     spanning_tree_tmp(i,vehicle{i}.parent) = 0;
@@ -366,7 +371,7 @@ for t=1:NT
                         
                         % Add proximity constraints with new parent
                         if(pl.look_for_packets(vehicle{i}.parent))
-                            pl.get_packet(vehicle{i}.parent)
+                            pl.get_packet(vehicle{i}.parent);
                             vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                             vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                             
@@ -394,6 +399,8 @@ for t=1:NT
                     xa = [xa;x;xc];
                 end
                 
+                %%% If the vehicle has not computed a virtual command then
+                %%% the planner identifies the next reference 
                 if(not(virtual(i)))
                     
                     if(i==1 || i==4)
@@ -428,8 +435,8 @@ for t=1:NT
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,vehicle{i}.ctrl_sys.sys.xi(1:2),g_n);
                 if ~isempty(g)
                     vehicle{i}.g = g;
-                    %                     cputime= [cputime,s.solvertime];
-                    %                     yalmiptime=[yalmiptime,s.yalmiptime];
+                    cputime= [cputime,s.solvertime];
+                    yalmiptime=[yalmiptime,s.yalmiptime];
                 else
                     disp('WARN: old references');
                     t,i
@@ -437,7 +444,7 @@ for t=1:NT
                 
             end
         end
-        
+        % Position Update through communication
         for j=vehicle{i}.cg.neigh
             pl.send_packet(i, j, []);
             if(pl.look_for_packets(j))
@@ -470,21 +477,20 @@ for t=1:NT
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
-        %%%%%%%%%%%%
+        %%%%%%%%%%%% Plotting of the parent connection 
         if(not(vehicle{k}.parent==0))
             v = vehicle{k}.ctrl_sys.sys.xi(1:2);
             p =  vehicle{vehicle{k}.parent}.ctrl_sys.sys.xi(1:2);
-            
-            
             plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
             
         end
-        plot(vehicle{2}.planner);
-        plot(vehicle{3}.planner);
-        plot(vehicle{5}.planner);
+        
         
     end
-        plot(pl);
+    plot(vehicle{2}.planner);
+    plot(vehicle{3}.planner);
+    plot(vehicle{5}.planner);
+    plot(pl);
     hold off;
     dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)),inf)];
     dist2 = [dist2, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)),inf)];

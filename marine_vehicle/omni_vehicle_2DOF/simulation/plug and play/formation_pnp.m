@@ -1,3 +1,7 @@
+% This scenario shows how to deal with neighbors while performing a plug in
+% operation 
+
+
 %% Clear workspace
 clear;  close all;
 
@@ -18,8 +22,7 @@ for i=1:N
             vehicle{i}.init_position(i*2 ,6.5);
         else
             vehicle{i}.init_position(i*2 ,3);
-        end
-        
+        end       
     else
         if(i==5)
             vehicle{i}.init_position((i-3)*2 ,8);
@@ -37,8 +40,8 @@ R_  = 4; % minimum distance for cooperation - [m]
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
+% ||(x,y)_i-(x,y)_j|| < d_max
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 200;  % maximum distance between vehicles - [m]
 d_min = 2; % minimum distance between vehicles - [m]
 
@@ -88,8 +91,12 @@ NT = ceil(Tf/Tc_cg); % simulation steps number
 
 plot_color = ['b', 'g', 'k', 'r', 'm'];
 
+% Vectors needed to evaluate computational aspects
+cputime= [];
+yalmiptime=[];
 
-% References
+% References manipulation 
+
 for i=1:N
     if(i==1 || i==2 || i==3)
         if(i==2)
@@ -105,15 +112,9 @@ for i=1:N
         r_{i} =  [ (i-3)*2 ; 0 ];
     end
 end
-% r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
-% r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
-% r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
-% 
-% r_{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
-% r_{4} = vehicle{1}.ctrl_sys.sys.xi(1:2);
-% r_{5} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 
 round = 1;
+
 for t=1:NT
     for i=1:N
         if vehicle{i}.color == colors(round)
@@ -130,11 +131,6 @@ for t=1:NT
                             vehicle{j}.cg.remove_swarm_cnstr(i);
                         end
                         
-                        if d_ij <= R__ && d_ij > R_
-                        end
-                        % Should be considerated an else condition if i ask
-                        % to plug with a vehicle already in a
-                        % pending_plugin
                         if d_ij <= R_ && ... 
                                 (vehicle{i}.pending_plugin == -1 || vehicle{i}.pending_plugin == 0)  && ...
                                 vehicle{j}.pending_plugin == -1 && ... %%% No plugin pending
@@ -152,12 +148,6 @@ for t=1:NT
                                 vehicle{i}.pending_plugin = -1;
                                 vehicle{j}.cg.add_swarm_cnstr(i,'anticollision',d_min); % Setted from v{j} after check
                                 vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
-%                                 % Send unfreeze request to v{j} neighbours
-%                                 for k = vehicle{j}.cg.neigh
-%                                     vehicle{k}.pending_plugin = -1;
-%                                     vehicle{k}.freeze = 0;  % 1 is eq to frez.
-%                                 end
-                           
                             else
                                 fprintf('Unpluggable: %d - %d. Need a virtual command \n',i,j);
                                 pluggable_status = 'virtual_cmd';
@@ -254,8 +244,8 @@ for t=1:NT
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
                 if ~isempty(g)
                     vehicle{i}.g = g;
-                    %                     cputime= [cputime,s.solvertime];
-                    %                     yalmiptime=[yalmiptime,s.yalmiptime];
+                    cputime= [cputime,s.solvertime];
+                    yalmiptime=[yalmiptime,s.yalmiptime];
                 else
                     disp('WARN: old references');
                     t,i
@@ -276,8 +266,8 @@ for t=1:NT
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,vehicle{i}.ctrl_sys.sys.xi(1:2),g_n);
                 if ~isempty(g)
                     vehicle{i}.g = g;
-                    %                     cputime= [cputime,s.solvertime];
-                    %                     yalmiptime=[yalmiptime,s.yalmiptime];
+                    cputime= [cputime,s.solvertime];
+                    yalmiptime=[yalmiptime,s.yalmiptime];
                 else
                     disp('WARN: old references');
                     t,i

@@ -18,13 +18,6 @@ end
 
 
 %% Net configuration
-
-adj_matrix = [-1  1  0  0  1;
-               1 -1  1  0  0;
-               0  1 -1  1  0;
-               0  0  1 -1  1;
-               1  0  0  1 -1];
-           
 spanning_tree =[-1  1  0  0  0;
                 1 -1  1  0  0;
                 0  1 -1  1  0;
@@ -33,8 +26,8 @@ spanning_tree =[-1  1  0  0  0;
  
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
+% ||(x,y)_i-(x,y)_j|| < d_max
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 13;  % maximum distance between vehicles - [m]
 d_min = 3; % minimum distance between vehicles - [m]
 
@@ -61,7 +54,6 @@ for i=1:N
     for j=1:N
         if(not (i==j))
             if(spanning_tree(i,j) == 1) % i,j is neighbour
-                
                 vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min,'proximity',d_max);
             else
                 vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
@@ -73,12 +65,13 @@ end
 %% Color the net
 colors = 1:N;
 
-
+%%% Since all vehicles communicate, we assign one color for each vehicle
 for i=1:N
     vehicle{i}.color = colors(i);
-    
 end
 
+
+plot_color = ['b', 'g', 'k', 'r', 'm'];
 
 
 %% Simulation Colored Round CG
@@ -86,15 +79,15 @@ Tf = 20; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-plot_color = ['b', 'g', 'k', 'r', 'm'];
+% References such that the vehicles move to spots that violate the
+% proximity constraint 
 
-% References
 for i=1:N
     r{i} = [18*sin(2*pi/N*i) + 20, 18*cos(2*pi/N*i) + 20 ]' ;
     vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
 end
-
 round = 3;
+
 for t=1:NT
     for i=1:N
         if vehicle{i}.color == colors(round)
@@ -102,13 +95,16 @@ for t=1:NT
                 xc = vehicle{i}.ctrl_sys.xci; % controller current state
                 xa = [x;xc];
                 g_n = [];
+                
                 for k = vehicle{i}.cg.neigh
                     g_n = [g_n;vehicle{k}.g];
                     x = vehicle{k}.ctrl_sys.sys.xi; % vehicle{j} current state
                     xc = vehicle{k}.ctrl_sys.xci; % controller{j} current state
                     xa = [xa;x;xc];
                 end
-                r_tmp = vehicle{i}.planner.compute_reference(vehicle{i},xa); % perdo riferimento virtuale
+                
+                
+                r_tmp = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
                  
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r_tmp,g_n);
                 if ~isempty(g)
@@ -130,9 +126,9 @@ for t=1:NT
     axis equal
     for k=1:N
         % Trajectory
-        %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
+        % Position 
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));

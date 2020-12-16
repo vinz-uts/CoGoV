@@ -1,3 +1,7 @@
+% This simulation shows how a swarm, in order to tackle the deadlock issued
+% by the presence of an obstacle and the proximity constraints, avoides an
+% obstacle going all in one direction 
+
 %% Clear workspace
 clear;  close all;
 
@@ -20,6 +24,7 @@ for i=1:N
     r_{i} = r{i};
 end
 
+%% References Initialization 
 % 
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2) + [40;0];
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2) + [40;0];
@@ -33,30 +38,7 @@ r_{3} = r{3};
 r_{4} = r{4};
 r_{5} = r{5};
 
-% r{4} = r{1};
-% r{1} = r_{2} - [0;5]; 
-% r{5} = r{4} + [5;-1];
-% 
-% % 
-% r_{1} = r{1};
-% r_{2} = r{2};
-% r_{3} = r{3};
-% r_{4} = r{4};
-% r_{5} = r{5};
-
-% vehicle{1}.planner = LinePlanner(r{1}, 'radius', 20);
-% vehicle{2}.planner = LinePlanner(r{2}, 'radius', 20);
-% vehicle{3}.planner = LinePlanner(r{3}, 'radius', 20);
-% vehicle{4}.planner = LinePlanner(r{4}, 'radius', 20);
-% vehicle{5}.planner = LinePlanner(r{5}, 'radius', 20);
-
 %% Net configuration
-
-adj_matrix = [-1  1  0  0  1;
-    1 -1  1  0  0;
-    0  1 -1  1  0;
-    0  0  1 -1  1;
-    1  0  0  1 -1];
 
 spanning_tree =[-1  1  0  0  0;
                  1 -1  1  0  0;
@@ -64,9 +46,11 @@ spanning_tree =[-1  1  0  0  0;
                  0  0  1 -1  1;
                  0  0  0  1 -1];
 %%%%%%%%%%%%%
-
+% It is assumed that vehicle 1 is the root of the spanning tree, and cant
+% change
 vehicle{1}.parent = 0;
 
+% Parent initialization 
 for i=2:N
     vehicle{i}.parent = i-1;
 end
@@ -74,8 +58,8 @@ end
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
+% ||(x,y)_i-(x,y)_j|| < d_max
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 7;  % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
@@ -93,6 +77,8 @@ dist = [];
 dist2 = [];
 dist3 = [];
 dist4 = [];
+
+% Pentagon shaped obstacle
 
 pentagon = polyshape( cloud_points(1,:),cloud_points(2,:));
 hypeblack = [];
@@ -119,18 +105,12 @@ for i=1:N
     vehicle{i}.color = colors(i);
 end
 
-
+plot_color = ['b', 'g', 'k', 'r', 'm'];
 
 %% Simulation Colored Round CG
 Tf = 150; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
-
-plot_color = ['b', 'g', 'k', 'r', 'm'];
-% 
-% for i=5:N
-%     vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
-% end
 
 round = 1;
 for t=1:NT
@@ -139,6 +119,7 @@ for t=1:NT
         if vehicle{i}.color == colors(round)
             index_min = -1;
             d_ijmin = 100;
+             % Search for the closest vehicle
             for j=1:N
                 if i~=j && not(vehicle{i}.parent==j) && not(vehicle{i}.parent==0)
                     d_ij = norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{j}.ctrl_sys.sys.xi(1:2));
@@ -151,14 +132,15 @@ for t=1:NT
             
             
             if(not(vehicle{i}.parent==0))
+                % Check if the distance between the actual parent is larger
+                % than the distance with the closest vehicle 
                 if(d_ijmin < norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{vehicle{i}.parent}.ctrl_sys.sys.xi(1:2)))
                     spanning_tree_tmp = spanning_tree;
                     spanning_tree_tmp(i,vehicle{i}.parent) = 0;
                     spanning_tree_tmp(vehicle{i}.parent,i) = 0;
                     spanning_tree_tmp(i,index_min) = 1;
                     spanning_tree_tmp(index_min,i) = 1;
-                    if(isConnected(spanning_tree_tmp))
-                        
+                    if(isConnected(spanning_tree_tmp))                     
                         % Remove the old parent proximity constraints
                         vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                         vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
@@ -195,14 +177,14 @@ for t=1:NT
                 xa = [xa;x;xc];
             end
             
-%             r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa); 
-            if(i==1)
-                [g,s,hypeblack] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points);
-            else
+            % Only the first vehicle compute the formation shared
+            % hyperplane
+            if(i==1)           
+                [g,s,hypeblack] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points,[]);
+            else          
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points,hypeblack);
             end
-            
-            
+                 
             if ~isempty(g)
                 vehicle{i}.g = g;
             else
@@ -222,7 +204,6 @@ for t=1:NT
     axis([0 50 -25 25]);
     for k=1:N
         % Trajectory
-        %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
         axis([0 50 -25 25]);
@@ -232,22 +213,18 @@ for t=1:NT
         plot(r_{k}(1), r_{k}(2), strcat(plot_color(k), 'o'));
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
         plot(pentagon);
-        %%%%%%%%%%%%
+        %%%%%%%%%%%% Hyperplane plot
         if(k==1 && not(isempty(hypeblack)) )
             plot(hypeblack);
         end
-        
+        % Plotting of the parent connection 
         if(not(vehicle{k}.parent==0))
             v = vehicle{k}.ctrl_sys.sys.xi(1:2);
             p =  vehicle{vehicle{k}.parent}.ctrl_sys.sys.xi(1:2);
-            
-
             plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
 
         end
-%         plot(vehicle{2}.planner);
-%         plot(vehicle{3}.planner);
-%         plot(vehicle{5}.planner);
+
     end
     
     hold off;

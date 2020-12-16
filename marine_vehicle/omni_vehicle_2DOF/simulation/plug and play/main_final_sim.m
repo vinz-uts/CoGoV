@@ -5,7 +5,6 @@ vehicle_2DOF_model_2
 
 %% Vehicles
 N = 4; % number of vehicles
-
 % Vehicle 1
 vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle{1}.init_position(-0.2,-0.1);
@@ -33,12 +32,9 @@ r_vect = [-2,-2,3,0.5,-3,1,3,3];
 
 vehicle{4}.planner = LinePlanner(r_vect, 'recovery', 20);
 
-
-
 vehicle{1}.planner.transform(1, [1, 0]);
 vehicle{2}.planner.transform(1, [-1, 0]);
 vehicle{3}.planner.transform(1, [0, 1]);
-
 
 %% Net configuration
 
@@ -49,8 +45,8 @@ adj_matrix = [-1  1  1  0;
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||? ? d_max
-% ||(x,y)_i-(x,y)_j||? ? d_min
+% ||(x,y)_i-(x,y)_j|| < d_max
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 1.5; % maximum distance between vehicles - [m]
 d_min = 0.3; % minimum distance between vehicles - [m]
 
@@ -73,7 +69,6 @@ for i=1:N
         end
     end
 end
-
 
 %% Color the net
 colors = [0,1,2];
@@ -122,21 +117,24 @@ dist3 = [];
 for t=1:NT
     for i=1:N
         
+        %%% The vehicle doesnt make part of the formation, hence it
+        %%% computes its reference outside the Turn based approach 
         if(isempty(vehicle{4}.color) && i == 4)
             for ii = 1:N-1
                 if(not(isempty(find(ask_to_plug == 1, 1)))) % one plug at time
                     break;
-                end
+                end     
                 
+                % Plug IN
                 if(norm(vehicle{ii}.ctrl_sys.sys.xi(1:2) - vehicle{N}.ctrl_sys.sys.xi(1:2)) < 4*d_min ... % close enough
                         && not(ask_to_plug(ii)) ... % pug-in request not already sent
-                        && isempty(find(vehicle{ii}.cg.neigh == N, 1))) % not already coupled
-                    
+                        && isempty(find(vehicle{ii}.cg.neigh == N, 1))) % not already coupled                
                     ask_to_plug(ii) = true;
                     fprintf('Plug-in request sent to vehicle %d.\n', ii);
                     break;
                 end
                 
+                % Plug OUT 
                 if(norm(vehicle{ii}.ctrl_sys.sys.xi(1:2) - vehicle{N}.ctrl_sys.sys.xi(1:2)) > 4*d_min ... % far enough
                         && not(isempty(find(vehicle{ii}.cg.neigh == N, 1))))
                     
@@ -168,8 +166,7 @@ for t=1:NT
             end
             
             vehicle{4}.g = vehicle{4}.cg.compute_cmd(xa, r{4}, g_n);
-            
-
+         
         end
         
         if vehicle{i}.color == colors(round)
@@ -181,6 +178,7 @@ for t=1:NT
                         break;
                     end
                     
+                    % Plug IN
                     if(norm(vehicle{ii}.ctrl_sys.sys.xi(1:2) - vehicle{N}.ctrl_sys.sys.xi(1:2)) < 3*d_min + 0.3 ... % close enough
                             && not(ask_to_plug(ii)) ... % pug-in request not already sent
                             && isempty(find(vehicle{ii}.cg.neigh == N, 1))) % not already coupled
@@ -189,27 +187,19 @@ for t=1:NT
                         fprintf('Plug-in request sent to vehicle %d.\n', ii);
                         break;
                     end
-                    
+                    % Plug OUT
                     if(norm(vehicle{ii}.ctrl_sys.sys.xi(1:2) - vehicle{N}.ctrl_sys.sys.xi(1:2)) > 4*d_min ... % far enough
-                            && not(isempty(find(vehicle{ii}.cg.neigh == N, 1))))
-                        
+                            && not(isempty(find(vehicle{ii}.cg.neigh == N, 1))))                       
                         fprintf('Plug-out request sent to vehicle %d.\n', ii);
                         vehicle{ii}.cg.remove_swarm_cnstr(N);
                         vehicle{N}.cg.remove_swarm_cnstr(ii);
                         adj_matrix(N, ii) = 0;
-                        adj_matrix(ii, N) = 0;
-                        
+                        adj_matrix(ii, N) = 0;                        
                         fprintf('Plug-out request satisfied for vehicle %d.\n', ii);
-                    end
-                    
-                    
+                    end              
                 end
             end
             
-%             if(not(i == N))
-%                 r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
-%             end
-
             x = vehicle{i}.ctrl_sys.sys.xi; % vehicle current state
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
@@ -277,8 +267,7 @@ for t=1:NT
                 r{4} =  vehicle{4}.planner.compute_reference(vehicle{4},[]);
                 
                 virtual(4)= false;
-                virtual(i)= false;
-%                 r{N} = rN_tmp;               
+                virtual(i)= false;   
                 %%% If they are not pluggable we procede finding a virtual
                 %%% reference and freezing references for neig of
                 
@@ -291,7 +280,6 @@ for t=1:NT
                     ask_to_freeze(vehicle{i}.cg.neigh) = true;
                     virtual(4) = true; 
                     virtual(i) = true; 
-%                     rN_tmp = r{N};
                     vehicle{4}.color = [];
                 end
                 r{i} = r_stari;
@@ -317,18 +305,6 @@ for t=1:NT
             end
         end
     end
-
-    %%% When the vehicle N+1 has reached its first goal, the goal changes
-%     if(norm(vehicle{4}.ctrl_sys.sys.xi(1:2) - r_vect(:,reference4)) < 0.1) 
-%         reference4= reference4 +1 ;
-%         
-%         if(reference4 > 4)
-%             reference4 = 1;
-%         end
-%         
-%         r{4} = r_vect(:,reference4);
-%         rN_tmp = r{4};
-%     end
 
     for i=1:N
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);

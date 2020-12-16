@@ -1,3 +1,6 @@
+% Simulation implemented to show only the Change Parent strategy 
+
+
 %% Clear workspace
 clear;  close all;
 
@@ -17,41 +20,34 @@ for i=1:N
     vehicle{i}.init_position(10*sin(2*pi/N*i) + 20 ,10*cos(2*pi/N*i)+20);
 end
 
-% References
+
+% Planners Initialization 
 xSamples = [1, 0, -1, 0];
 ySamples = [0, 1, 0, -1];
 
-
-
+%%% Vehicles 2,3 and 5 need to follow a circular trajectory 
 
 vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4 , 'tolerance', 0.7, 'radius', 2.5);
-vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)]);
-
-
+vehicle{2}.planner.transform(4.5, [vehicle{2}.ctrl_sys.sys.xi(1), vehicle{2}.ctrl_sys.sys.xi(2)])
 
 vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'clockwise', false , 'step', 0.4 , 'tolerance', 0.7, 'radius', 2.5);
 vehicle{3}.planner.transform(3, [vehicle{3}.ctrl_sys.sys.xi(1), vehicle{3}.ctrl_sys.sys.xi(2)]);
 
-
 vehicle{5}.planner = Polar_trajectory_planner(xSamples, ySamples, 'step', 0.4, 'clockwise', false, 'tolerance', 0.1,'radius',2.5);
 vehicle{5}.planner.transform(6, [vehicle{5}.ctrl_sys.sys.xi(1), vehicle{5}.ctrl_sys.sys.xi(2)]);
 
+% References initialization 
 r{1} = vehicle{1}.ctrl_sys.sys.xi(1:2);
 r{2} = vehicle{2}.ctrl_sys.sys.xi(1:2);
 r{3} = vehicle{3}.ctrl_sys.sys.xi(1:2);
 r{4} = vehicle{4}.ctrl_sys.sys.xi(1:2);
 r{5} = vehicle{5}.ctrl_sys.sys.xi(1:2);
 
+%%% Vehicles 1 and 4 need to stand still 
 vehicle{1}.planner = LinePlanner(r{1}, 'radius', 1.2);
 vehicle{4}.planner = LinePlanner(r{4}, 'radius', 1.2);
 
 %% Net configuration
-
-adj_matrix = [-1  1  0  0  1;
-    1 -1  1  0  0;
-    0  1 -1  1  0;
-    0  0  1 -1  1;
-    1  0  0  1 -1];
 
 spanning_tree =[-1  1  0  0  0;
                  1 -1  1  0  0;
@@ -60,8 +56,11 @@ spanning_tree =[-1  1  0  0  0;
                  0  0  0  1 -1];
 %%%%%%%%%%%%%
 
+% It is assumed that vehicle 1 is the root of the spanning tree, and cant
+% change
 vehicle{1}.parent = 0;
 
+% Parent initialization 
 for i=2:N
     vehicle{i}.parent = i-1;
 end
@@ -69,8 +68,8 @@ end
 
 %% Vehicles constraints
 % Vehicles swarm position constraints
-% ||(x,y)_i-(x,y)_j||∞ ≤ d_max
-% ||(x,y)_i-(x,y)_j||∞ ≥ d_min
+% ||(x,y)_i-(x,y)_j|| < d_max
+% ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 12;  % maximum distance between vehicles - [m]
 d_min = 1; % minimum distance between vehicles - [m]
 
@@ -81,7 +80,7 @@ T_max = 30; % max abs of motor thrust - [N]
 
 %% Command Governor parameters
 Psi = 1000*eye(2); % vehicle's references weight matrix
-k0 = 10; % prediction horizon
+k0 = 20; % prediction horizon
 
 %%% Vector for distance for plotting purposes
 dist = [];
@@ -112,22 +111,16 @@ for i=1:N
     vehicle{i}.color = colors(i);
 end
 
-
+plot_color = ['b', 'g', 'k', 'r', 'm'];
 
 %% Simulation Colored Round CG
 Tf = 150; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
-plot_color = ['b', 'g', 'k', 'r', 'm'];
-
+%% Communication Layer Initilization
 pl = Phisical_Layer(N, 200, 0, 1);
 pl.update(vehicle, 0);
-
-% 
-% for i=5:N
-%     vehicle{i}.planner = LinePlanner(r{i}, 'radius', 1.2);
-% end
 
 round = 1;
 for t=1:NT
@@ -136,6 +129,8 @@ for t=1:NT
         if vehicle{i}.color == colors(round)
             index_min = -1;
             d_ijmin = 100;
+            
+            % Search for the closest vehicle
             for j=1:N
                 if i~=j && not(vehicle{i}.parent==j) && not(vehicle{i}.parent==0)
                     d_ij = norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{j}.ctrl_sys.sys.xi(1:2));
@@ -145,7 +140,11 @@ for t=1:NT
                     end
                 end
             end
+            
             if(not(vehicle{i}.parent==0))
+                % Check if the distance between the actual parent is larger
+                % than the distance with the closest vehicle 
+                
                 if(d_ijmin < norm(vehicle{i}.ctrl_sys.sys.xi(1:2)-vehicle{vehicle{i}.parent}.ctrl_sys.sys.xi(1:2)))
                     spanning_tree_tmp = spanning_tree;
                     spanning_tree_tmp(i,vehicle{i}.parent) = 0;
@@ -168,7 +167,7 @@ for t=1:NT
                         
                         % Add proximity constraints with new parent
                         if(pl.look_for_packets(vehicle{i}.parent))
-                            pl.get_packet(vehicle{i}.parent)
+                            pl.get_packet(vehicle{i}.parent);
                             vehicle{vehicle{i}.parent}.cg.remove_swarm_cnstr(i);
                             vehicle{i}.cg.remove_swarm_cnstr(vehicle{i}.parent);
                             
@@ -204,6 +203,7 @@ for t=1:NT
                 disp('WARN: old references');
                 t,i
             end
+            % Position Update through communication
              for j=1:N
                 if i~=j
                    pl.send_packet(i, j, []);
@@ -227,7 +227,6 @@ for t=1:NT
     axis([0 40 0 40]);
     for k=1:N
         % Trajectory
-        %         axis([0 5 -4 4])
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         hold on;
         axis([0 40 0 40]);
@@ -235,20 +234,17 @@ for t=1:NT
         %%%% live plot %%%%
         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
-        %%%%%%%%%%%%
+        %%%%%%%%%%%% Plotting of the parent connection 
         if(not(vehicle{k}.parent==0))
             v = vehicle{k}.ctrl_sys.sys.xi(1:2);
             p =  vehicle{vehicle{k}.parent}.ctrl_sys.sys.xi(1:2);
-            
-
             plot([v(1), p(1)], [v(2), p(2)], strcat(plot_color(k), ':'),'LineWidth',1);
-
         end
-        plot(vehicle{2}.planner);
-        plot(vehicle{3}.planner);
-        plot(vehicle{5}.planner);
-        
     end
+    
+    plot(vehicle{2}.planner);
+    plot(vehicle{3}.planner);
+    plot(vehicle{5}.planner);   
     plot(pl);
     hold off;
     dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)),inf)];
