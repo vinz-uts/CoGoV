@@ -124,7 +124,7 @@ R_dmin = R_-1;
 
 
 %% Simulation Colored Round CG
-Tf = 150; % simulation time
+Tf = 15; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
 NT = ceil(Tf/Tc_cg); % simulation steps number
 
@@ -407,18 +407,14 @@ for t=1:NT
                 if(not(virtual(i)))
                     
                     r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
-%                     if(i==1 || i==4)
-%                         r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
-%                     else
-%                         r{i} = vehicle{i}.planner.compute_trajectory_reference(t*Tc_cg,vehicle{i}.g,vehicle{i}.ctrl_sys.sys.xi(1:2));
-%                     end
-                    
                 end
                 
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n);
                 
                 if ~isempty(g)
                     vehicle{i}.g = g;
+                    cputime= [cputime,s.solvertime];
+                    yalmiptime=[yalmiptime,s.yalmiptime];
                 else
                     disp('WARN: old references');
                     t,i
@@ -437,6 +433,7 @@ for t=1:NT
                 end
                 
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,vehicle{i}.ctrl_sys.sys.xi(1:2),g_n);
+                
                 if ~isempty(g)
                     vehicle{i}.g = g;
                     cputime= [cputime,s.solvertime];
@@ -497,40 +494,10 @@ for t=1:NT
     
 end
 
-figure;
+figure; 
 subplot(4, 1, 1);
-plot(1:NT, dist);
 hold on;
-plot(1:NT,d_max*ones(1,length(1:NT)));
+plot(1:NT,cputime);
 title('Distance between vehicles 1 and vehicle 2');
 xlabel('time [s]');
 ylabel('distance [m]');
-
-%%%%%%%%%%%%
-subplot(4, 1, 2);
-plot(1:NT, dist2);
-hold on;
-plot(1:NT,d_max*ones(1,length(1:NT)));
-title('Distance between vehicles 2 and vehicle 3');
-xlabel('time [s]');
-ylabel('distance [m]');
-
-%%%%%%%%%
-subplot(4, 1, 3);
-plot(1:NT, dist3);
-hold on;
-plot(1:NT,d_max*ones(1,length(1:NT)));
-title('Distance between vehicles 3 and vehicle 4');
-xlabel('time [s]');
-ylabel('distance [m]');
-%
-
-%%%%%%%%%
-subplot(4, 1, 4);
-plot(1:NT, dist3);
-hold on;
-plot(1:NT,d_max*ones(1,length(1:NT)));
-title('Distance between vehicles 4 and vehicle 5');
-xlabel('time [s]');
-ylabel('distance [m]');
-%

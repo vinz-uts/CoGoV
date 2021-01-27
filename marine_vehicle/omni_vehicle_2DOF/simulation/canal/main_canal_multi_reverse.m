@@ -170,9 +170,9 @@ for t=1:NT
     plot(ob5,'.-b');
     
     % Plotting of the closest obstacle found (red)
-    if(not(isempty(obseen)))
-        plot(obseen,'-r');
-    end
+%     if(not(isempty(obseen)))
+%         plot(obseen,'-r');
+%     end
     
     plot(ones(1,21)*-(x_max),0:20,'--r');
     plot(ones(1,21)*x_max,0:20,'--r');

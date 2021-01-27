@@ -184,6 +184,7 @@ for t=1:NT
             else          
                 [g,s] = vehicle{i}.cg.compute_cmd(xa,r{i},g_n,cloud_points,hypeblack);
             end
+            
                  
             if ~isempty(g)
                 vehicle{i}.g = g;
@@ -214,9 +215,9 @@ for t=1:NT
         plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
         plot(pentagon);
         %%%%%%%%%%%% Hyperplane plot
-        if(k==1 && not(isempty(hypeblack)) )
-            plot(hypeblack);
-        end
+%         if(k==1 && not(isempty(hypeblack)) )
+%             plot(hypeblack);
+%         end
         % Plotting of the parent connection 
         if(not(vehicle{k}.parent==0))
             v = vehicle{k}.ctrl_sys.sys.xi(1:2);

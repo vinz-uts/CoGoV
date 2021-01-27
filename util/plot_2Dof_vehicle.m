@@ -62,7 +62,7 @@ function  plot_2Dof_vehicle(vehicle, r, d_min, varargin)
     end
     
     if(not(isempty(r)))
-        plot(r(1), r(2), strcat(plot_pair{3, 2}, plot_pair{1, 2}));
+       % plot(r(1), r(2), strcat(plot_pair{3, 2}, plot_pair{1, 2}));
     end
     
     if(not(isempty(vehicle.g)))

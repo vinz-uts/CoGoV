@@ -138,6 +138,7 @@ T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
 
 cg = CentralizedCommandGovernor(Phi,G,Hc,L,T,gi,U,hi,Psi,k0,'gurobi');
 
+
 %% Simulation Colored Round CG
 Tf = 10; % simulation time
 Tc_cg = 1*vehicle{1}.ctrl_sys.Tc; % references recalculation time
