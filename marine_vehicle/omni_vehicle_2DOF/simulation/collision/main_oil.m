@@ -52,9 +52,9 @@ for i=1:N
         end
     end
 end
+
 %% Planner
 %%%%%%%%%%%%%  Loading data in order simulate the oil stain
-
 % Loading set of points
 load('xSamples','xSamples');
 load('ySamples','ySamples');

@@ -10,7 +10,7 @@ close all;
 vehicle_2DOF_model_2
 
 %% Vehicles
-N = 3; % number of vehicles
+N = 2; % number of vehicles
 %for i=1:N
 	% Vehicle 1
 	vehicle{1} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
