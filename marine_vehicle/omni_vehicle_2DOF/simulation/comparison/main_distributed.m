@@ -2,7 +2,7 @@
 clear;  close all;
 
 %%%%%%%%%%%%%%%%%%%%% configurazion parameters %%%%%%%%%%%%%%
-N = 20; % number of vehicles
+N = 4; % number of vehicles
 init_radius = 7;
 random_reference = true;
 parent_change_enabled = false;
@@ -235,7 +235,7 @@ for t=1:NT
                 end
             end
         end
-        pl.update(vehicle, t*Tc_cg);
+        pl.update(vehicle, t*Tc_cg); 
       
     end
     % Simulate for Tc_cg

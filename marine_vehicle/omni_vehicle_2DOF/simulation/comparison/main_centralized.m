@@ -2,7 +2,7 @@
 clear;  close all;
 
 %%%%%%%%%%%%%%%%%%%%% configurazion parameters %%%%%%%%%%%%%%
-N = 24; % number of vehicles
+N = 4; % number of vehicles
 init_radius = 7;
 random_reference = true;
 parent_change_enabled = false;

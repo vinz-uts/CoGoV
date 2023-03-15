@@ -50,14 +50,14 @@ classdef (Abstract) Planner < handle
             
             %%%%% Default Values %%%%%
             obj.standstill = -1;
-            obj.tol = 0.1;
+            obj.tol = 0.3;
             obj.counter  = 0;
             obj.rec_tolerance = 0.001;
             obj.radius = 0.5; 
             %%%%%%%%%%%%
             
             %%%%%%% Variable arguments management %%%%%%%
-            validnames = {'recovery', 'rec_tolerance', 'rec_from_collision','radius'};
+            validnames = {'recovery', 'rec_tolerance', 'rec_from_collision', 'radius'};
             
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
@@ -152,8 +152,6 @@ classdef (Abstract) Planner < handle
             if(not(iscolumn(r)))
                 r = r';
             end
-
-            
             
             obj.r_old = r;
             obj.p_old = p;
@@ -166,7 +164,7 @@ classdef (Abstract) Planner < handle
             else
                 direction = -1;
             end
-            
+
             if((r(1) - p(1)) == 0)
                 slope = inf;
                 intercept = p(1);
@@ -179,7 +177,7 @@ classdef (Abstract) Planner < handle
                 slope = (r(2) - p(2))/(r(1) - p(1));
                 intercept = -slope*p(1) + p(2);
             end
-            
+
             [xout,yout] = linecirc(slope, intercept,p(1), p(2), obj.radius);
             % Choose the right poit to use as an intermediate reference
             if(slope == inf)

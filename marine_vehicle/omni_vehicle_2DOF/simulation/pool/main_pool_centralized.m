@@ -145,6 +145,7 @@ T_ = [ 1  0  0  0  0  0 ;
     0  0  0  0 -1  0 ;
     0  0  0  0  0  1 ;
     0  0  0  0  0 -1 ];
+
 gi_ = [Max_x,Max_x,Max_y,Max_y,T_max,T_max,T_max,T_max]';
 
 T = [T_ zeros(size(T_,1),nca-nc); T];   gi = [gi_;gi];
@@ -211,7 +212,6 @@ for t=1:NT
          for j=1:N
              r_ = [r_;r{j}];
          end
-        
      end
     
     g = cg.compute_cmd(xa,r_);
@@ -253,8 +253,7 @@ for t=1:NT
         plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
         
         axis([-Max_x-1, Max_x + 1, -Max_y - 1, Max_y + 1]);
-        
-        
+
         % Plot vehicles position 
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
         

@@ -1,6 +1,14 @@
 clear;
 close all;
 
+set(0, 'DefaultLineLineWidth', 3);
+
+%% Load vehicles' model matrices
+addpath('../../../../marine_vehicle');      addpath('../../../../marine_vehicle/omni_vehicle_2DOF');
+addpath(genpath('../../../../util'));       addpath('../../../../CG');
+addpath(genpath('../../../../tbxmanager'));
+
+
 vehicle_2DOF_model_2
 
 %% Vehicles
@@ -24,11 +32,12 @@ vehicle{4}.init_position(3, 3);
 xSamples = 1.2*[1, 0, -1, 0]';
 ySamples = 1.2*[0, 1, 0, -1]';
 
-vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples);
-vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples,'recovery',20,'clockwise',false,'rec_from_collision',true);
-vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples);
+vehicle{1}.planner = Polar_trajectory_planner(xSamples, ySamples, 'radius', 0.5);
+vehicle{2}.planner = Polar_trajectory_planner(xSamples, ySamples,'recovery',20,'clockwise',false,'rec_from_collision',true, 'radius', 0.5);
+vehicle{3}.planner = Polar_trajectory_planner(xSamples, ySamples, 'radius', 0.5);
 
 r_vect = [-2,-2,3,0.5,-3,1,3,3];
+%r_vect = [-2,-2];
 
 vehicle{4}.planner = LinePlanner(r_vect, 'recovery', 20);
 
@@ -48,7 +57,7 @@ adj_matrix = [-1  1  1  0;
 % ||(x,y)_i-(x,y)_j|| < d_max
 % ||(x,y)_i-(x,y)_j|| > d_min
 d_max = 1.5; % maximum distance between vehicles - [m]
-d_min = 0.3; % minimum distance between vehicles - [m]
+d_min = 0.6; % minimum distance between vehicles - [m]
 
 % Vehicles input/speed constraints
 Vx = 0.5; % max abs of speed along x - [m/s]
@@ -109,10 +118,13 @@ r_stari = [];
 r_starn1 = [];
 
 %%% Vector for distance between i and N+1 for plotting purposes
-dist = [];
-dist2 = [];
-dist3 = [];
+u_list = {[], [], [], []};
+time_to_solve = [];
+g_list = [];
 
+writerObj = VideoWriter('Plugin_Video.avi');
+writerObj.FrameRate = 10;
+open(writerObj);
 %%%%%% Sim cycle %%%%%%%%%
 for t=1:NT
     for i=1:N
@@ -294,81 +306,124 @@ for t=1:NT
                 g = vehicle{i}.g;
             else
                 [g,s] = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
+                %g = r{i};
             end
             
             
             if ~isempty(g)
                 vehicle{i}.g = g;
+                time_to_solve = [time_to_solve, [s.solvertime; s.yalmiptime]];
             else
                 disp('WARN: old references');
                 t,i
+            end
+            
+            if i == 4
+                g_list = [g_list,  vehicle{i}.g];
             end
         end
     end
 
     for i=1:N
-        vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
+        u_list{i} = [u_list{i}, vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg)];
     end
     round = rem(round,length(colors))+1;
     
     %%%%%%% live plot %%%%%%%
     figure(1);
-    
-    axis equal
-    plot(vehicle{1}.planner)
+    clf;
     hold on;
+    plot_struct = [];
+    legend_list = [];
+    title('Patrolling simulation');
+    xlabel('x [m]');
+    ylabel('y [m]');
+    plot(vehicle{1}.planner)
     plot(vehicle{2}.planner)
     plot(vehicle{3}.planner)
-    
+    axis([-3 3 -3 3]);
+    grid on;
     for k=1:N
-        % Trajectory
-        %         axis([0 5 -4 4])
-        plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'),'LineWidth',0.8);
+        for kk=vehicle{k}.cg.neigh
+            plot([vehicle{k}.ctrl_sys.sys.x(1,end), vehicle{kk}.ctrl_sys.sys.x(1,end)],...
+                [vehicle{k}.ctrl_sys.sys.x(2,end), vehicle{kk}.ctrl_sys.sys.x(2,end)], strcat(plot_color(k), '--'), 'Linewidth', 2);
+        end
+    end
+    len_scia = 7000;
+    for k=1:N
+        if(length(vehicle{k}.ctrl_sys.sys.x(1,:)) < len_scia)
+            scia = 1:length(vehicle{k}.ctrl_sys.sys.x(1,:));
+        else
+            scia = length(vehicle{k}.ctrl_sys.sys.x(1,:)) - len_scia:length(vehicle{k}.ctrl_sys.sys.x(1,:));
+        end
+        % Plot vehicles trajectory
+        plot_struct = [plot_struct, plot(vehicle{k}.ctrl_sys.sys.x(1,scia),vehicle{k}.ctrl_sys.sys.x(2,scia), strcat(plot_color(k), '-.'))];
+       
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),'MarkerFaceColor',plot_color(k),'MarkerSize',7);
+        legend_list = [legend_list, sprintf("vehicle %d", k)];
         %%%% live plot %%%%
-        plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
-        plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'));
+%         plot(r{k}(1), r{k}(2), strcat(plot_color(k), 'o'));
+        plot_struct = [plot_struct, plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'))];
+        legend_list = [legend_list, sprintf("g %d", k)];
         %%%%%%%%%%%%
     end
     
     hold off;
-    
-    if(t==1)
-        title('Frontal Collision Simulation');
-        xlabel('x [m]');
-        ylabel('y [m]');
-    end
-    dist = [dist, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{N}.ctrl_sys.sys.x(1:2,end)))];
-    dist2 = [dist2, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{N}.ctrl_sys.sys.x(1:2,end)))];
-    dist3 = [dist3, norm((vehicle{3}.ctrl_sys.sys.x(1:2,end)-vehicle{N}.ctrl_sys.sys.x(1:2,end)))];
+    legend(plot_struct, legend_list, 'Location','southwest','NumColumns', N);
+
     drawnow;
+    writeVideo(writerObj,im2frame(print('-RGBImage', strcat('-r', '300'))));
 end
+close(writerObj);
+vehicle_data = [];
+nx = 4;
 
+for i=1:N
+    data = struct("x", [vehicle{i}.ctrl_sys.sys.x; vehicle{i}.ctrl_sys.xc], "u", u_list{i}); %...
+                  %"u", -vehicle{i}.ctrl_sys.Fa(:,1:nx)*vehicle{i}.ctrl_sys.sys.x + vehicle{i}.ctrl_sys.Fa(:,nx+1:end)*vehicle{i}.ctrl_sys.xc);
+                  
+    vehicle_data = [vehicle_data, data];
+end
+sim_data = struct('system', vehicle_data, 'time', (1:NT)*Tc, "Tc", Tc, 'd_min', d_min, "T_max", T_max);
 
-figure;
-subplot(3, 1, 1);
-plot(1:NT, dist);
-hold on;
-plot(1:NT,d_min*ones(1,length(1:NT)));
-title('Distance between vehicles 1 and vehicle 4');
-xlabel('time [s]');
+virtual_time = 0:sim_data.time(end)/length((sim_data.system(1).x(1, :))):sim_data.time(end);
+virtual_time(end) = [];
+plot_window = 1:length(virtual_time)-1;
+save("plginout_patt_no_cg.mat", "sim_data");
+
+full_time = time_to_solve(1, :);
+fprintf("Minimum time: %.3f\t Maximum time: %.3f, Mean time: %.3f\n", ...
+         min(full_time),  max(full_time),  mean(full_time));
+
+figure
+len = length(virtual_time)-1;
+l1 = sim_data.system(1).x(1:2, 1:len) - sim_data.system(2).x(1:2, 1:len);
+l2 = sim_data.system(1).x(1:2, 1:len) - sim_data.system(3).x(1:2, 1:len);
+l3 = sim_data.system(1).x(1:2, 1:len) - sim_data.system(4).x(1:2, 1:len);
+l4 = sim_data.system(2).x(1:2, 1:len) - sim_data.system(3).x(1:2, 1:len);
+l5 = sim_data.system(2).x(1:2, 1:len) - sim_data.system(4).x(1:2, 1:len);
+l6 = sim_data.system(3).x(1:2, 1:len) - sim_data.system(4).x(1:2, 1:len);
+distance = zeros(6, size(l1, 2));
+for i=1:length(l1)
+    distance(1, i) = norm(l1(:, i));
+    distance(2, i) = norm(l2(:, i));
+    distance(3, i) = norm(l3(:, i));
+    distance(4, i) = norm(l4(:, i));
+    distance(5, i) = norm(l5(:, i));
+    distance(6, i) = norm(l6(:, i));
+end
+hold on
+plot(virtual_time(plot_window), distance(1, plot_window));
+plot(virtual_time(plot_window), distance(2, plot_window));
+plot(virtual_time(plot_window), distance(3, plot_window));
+plot(virtual_time(plot_window), distance(4, plot_window));
+plot(virtual_time(plot_window), distance(5, plot_window));
+plot(virtual_time(plot_window), distance(6, plot_window));
+if(~isempty(sim_data.d_min))
+    hold on
+    plot(virtual_time(plot_window), ones(length(virtual_time(plot_window)), 1)*sim_data.d_min-0.04, 'r--');
+    hold off
+end
 ylabel('distance [m]');
-
-%%%%%%%%%%%%
-subplot(3, 1, 2);
-plot(1:NT, dist2);
-hold on;
-plot(1:NT,d_min*ones(1,length(1:NT)));
-title('Distance between vehicles 2 and vehicle 4');
 xlabel('time [s]');
-ylabel('distance [m]');
-
-%%%%%%%%%
-subplot(3, 1, 3);
-plot(1:NT, dist3);
-hold on;
-plot(1:NT,d_min*ones(1,length(1:NT)));
-title('Distance between vehicles 3 and vehicle 4');
-xlabel('time [s]');
-ylabel('distance [m]');
-%
+legend('1-2 distance', '1-3 distance', '1-4 distance', '2-3 distance', '2-4 distance', '3-4 distance', 'minimum admissible distance');

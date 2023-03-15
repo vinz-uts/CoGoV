@@ -143,7 +143,7 @@ yalmiptime=[];
 round = 1;
 for t=1:NT
     for i=1:N
-        
+
         if vehicle{i}.color == colors(round)
             index_min = -1;
             d_ijmin = 100;

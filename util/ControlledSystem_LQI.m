@@ -40,7 +40,7 @@ classdef ControlledSystem_LQI < handle
         end
             
         
-        function sim(obj,r,T)
+        function u = sim(obj,r,T)
             % sim - Simulate the system
             %   Simulate the system for T seconds with initial conditions
             %   xi and constant references r appling a optimal linear

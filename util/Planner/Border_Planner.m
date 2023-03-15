@@ -75,12 +75,12 @@ classdef Border_Planner < Planner
         function [r, theta] = compute_standard_reference(obj, p) % inherited abstract method
             % compute m, q and check if it is necessary to change direction
             % if the vehicle has reached the left or right edge, the direction of movement must be changed
-            if(norm(p(1) - obj.limits.x_l) < obj.tol  || norm(p(1) - obj.limits.x_r) < obj.tol &&...
-                    norm(p - obj.border_reference) < obj.tol)
+            if((norm(p(1) - obj.limits.x_l) < obj.tol  || norm(p(1) - obj.limits.x_r) < obj.tol) &&...
+                    norm(p - obj.border_reference) < 0.1)
                 obj.update_line(p, -obj.slope, -obj.direction);
                 % if the vehicle has reached the upper or lower edge, it is not necessary to change the direction of movement
-            elseif(norm(p(2) - obj.limits.y_t) < obj.tol || norm(p(2) - obj.limits.y_b) < obj.tol && ...
-                    norm(p - obj.border_reference) < obj.tol)
+            elseif((norm(p(2) - obj.limits.y_t) < obj.tol || norm(p(2) - obj.limits.y_b) < obj.tol) && ...
+                    norm(p - obj.border_reference) < 0.1)
                 obj.update_line(p, -obj.slope, obj.direction);
             end
 %             r = compute_next_reference(obj, p);
@@ -147,33 +147,27 @@ classdef Border_Planner < Planner
                 obj.line = @(x) (obj.intercept);
             end
             obj.direction = direction;
-            inv_line = @(y) ((y - obj.intercept) \ obj.slope);
+            inv_line = @(y) ((y - obj.intercept) / obj.slope);
             % For the calculation of the reference we check which corner the vehicle is heading to
             if((obj.direction > 0 && obj.slope < 0) || ((obj.direction < 0 && obj.slope > 0)))
                 % lower right corner
                 if((obj.direction > 0 && obj.slope < 0))
                     r = [obj.limits.x_r, obj.line(obj.limits.x_r)]';
-                    if(not(obj.is_admissible(r)))
-                        r = [inv_line(obj.limits.y_b), obj.limits.y_b]';
-                    end
                 else % lower left corner
                     r = [obj.limits.x_l, obj.line(obj.limits.x_l)]';
-                    if(not(obj.is_admissible(r)))
-                        r = [inv_line(obj.limits.y_b), obj.limits.y_b]';
-                    end
+                end
+                if(not(obj.is_admissible(r)))
+                    r = [inv_line(obj.limits.y_b), obj.limits.y_b]';
                 end
             else
                 % upper left corner
                 if((obj.direction < 0 && obj.slope < 0))
                     r = [obj.limits.x_l, obj.line(obj.limits.x_l)]';
-                    if(not(obj.is_admissible(r)))
-                        r = [inv_line(obj.limits.y_t), obj.limits.y_t]';
-                    end
                 else % upper right corner
                     r = [obj.limits.x_r, obj.line(obj.limits.x_r)]';
-                    if(not(obj.is_admissible(r)))
-                        r = [inv_line(obj.limits.y_t), obj.limits.y_t]';
-                    end
+                end
+                if(not(obj.is_admissible(r)))
+                    r = [inv_line(obj.limits.y_t), obj.limits.y_t]';
                 end
             end
             obj.border_reference = r;

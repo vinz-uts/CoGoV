@@ -6,6 +6,10 @@ close all;
 
 
 %%% Loading vehicle parameters and control variables
+addpath('../../../../marine_vehicle');      addpath('../../../../marine_vehicle/omni_vehicle_2DOF');
+addpath(genpath('../../../../util'));       addpath('../../../../CG');
+addpath(genpath('../../../../tbxmanager'));
+
 vehicle_2DOF_model_2 % WARN: Select the correct constraints matrix Hc, L.
 
 vehicle = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
@@ -84,7 +88,15 @@ hy=[];
 %%% Vision of vehicle in meters 
 r_vision = 3;
 
-
+figure;
+legend_list = {'vehicle trajectory', 'vehicle g', 'hyperplane'};
+dist = [];
+time = [];
+time2 = [];
+g_list = [];
+% writerObj = VideoWriter('canal.avi');
+% open(writerObj);
+g_ = zeros(2, 1);
 for i=1:N
     
     %%% Augmented System State
@@ -104,38 +116,61 @@ for i=1:N
         %%% If an obstacle has been found, it is the closest, and the CG
         %%% takes into consideration the obstacle
         ver = obseen.vertices;
-        [g,s,hy] = vehicle.cg.compute_cmd(xa,r,[],ver);
+        hy_old = hy;
+        [g,s,hy] = vehicle.cg.compute_cmd(xa,r,[], ver);
+        if((r-g_list(:, end))'*Psi*(r-g_list(:, end)) <= (r-g)'*Psi*(r-g))
+            g = g_list(:, end);
+            hy = hy_old;
+        end
+        time = [time, i*Tc_cg];
+        tmpx = ver(1,:)-vehicle.ctrl_sys.sys.x(1,end);
+        tmpy = ver(2,:)-vehicle.ctrl_sys.sys.x(2,end);
+        tmp = [tmpx; tmpy];
+        norm_vect = vecnorm(tmp);
+        [m, k] = min(norm_vect);
+
+        dist = [dist, norm(vehicle.ctrl_sys.sys.x(1:2,end)-  ver(:, k))];
     end
+
+    g_list = [g_list, g];
+    time2 = [time2, i*Tc_cg];
     
     %%% Compute vehicle command given reference 
     vehicle.ctrl_sys.sim(g,Tc_cg);
-
     
-    %%% Plotting section 
-    plot_2Dof_vehicle(vehicle, r, r_vision, 'RangeAxis', [-10 10 0 20]);
-    hold on;
+    %%% Plotting section
+    clf;
+    plot_struct = [];
+    title('Canal Simulation');
+    xlabel('x[m]');
+    ylabel('y[m]');
+    grid on;
+    canal = polyshape([-3 -3 3 3], [20, 0, 0, 20]);
+    hold on
+    plot(canal, 'FaceColor', 'cyan')
+    plot_struct = [plot_struct, plot_2Dof_vehicle(vehicle, r, r_vision, 'RangeAxis', [-10 10 0 20], 'LineWidth', 3, 'D_min_style', '--')];
     
     % Plotting Command Governor Reference
-    plot(g(1),g(2),'xk');
+    plot_struct = [plot_struct, plot(g(1),g(2),'xk')];
     % Plotting Hyperplane found by CG OA strategy
     plot(hy);
     % Plotting of the obstacles (black)
-    plot(ob1,'.-b');
-    plot(ob2,'.-b');
-    plot(ob3,'.-b');
-    plot(ob4,'.-b');
-    plot(ob5,'.-b');
+    for ii = 1:length(oblist)
+        plot(oblist(ii), '.-b');
+    end
     
-    % Plotting of the closest obstacle found (red)
+%     plot(ones(1,21)*-(x_max),0:20,'b');
+%     plot(ones(1,21)*x_max,0:20,'b');
+%    Plotting of the closest obstacle found (red)
     if(not(isempty(obseen)))
         plot(obseen,'-r');
     end
     
     % Plotting of the river margins 
-    plot(ones(1,21)*-(xmax),0:20,'--r');
-    plot(ones(1,21)*xmax,0:20,'--r');
+%     legend(plot_struct, legend_list);
     drawnow;
+%     writeVideo(writerObj, getframe(gcf));
     hold off;
 end
-
+% close(writerObj);
 

@@ -87,11 +87,32 @@ classdef LinePlanner < Planner
         
         function [r, theta] = compute_standard_reference(obj, p) % inherited abstract method
             ref = obj.points(obj.point_iterator:obj.point_iterator+1)';
+            r = ref;
+            if(r(1) - p(1) > 0)
+                obj.direction = 1;
+            else
+                obj.direction = -1;
+            end
+            if((r(1) - p(1)) == 0)
+                obj.slope = inf;
+                obj.intercept = p(1);
+                if(r(2) - p(2) < 0)
+                    obj.direction = 1;
+                else
+                    obj.direction = -1;
+                end
+            else
+                obj.slope = (r(2) - p(2))/(r(1) - p(1));
+                obj.intercept = -obj.slope*p(1) + p(2);
+            end
+            if(obj.slope == inf)
+                obj.line = @(x) (obj.intercept);
+            else
+                obj.line = @(x) (x*obj.slope + obj.intercept);
+            end
             if(norm(p - ref) > obj.tol) % If the vehicle has reached an intermediate reference
                 r = obj.compute_next_reference(p);
-                
                 if(obj.slope == inf)
-                    
                     if(obj.direction > 0)
                         if(r(2) < ref(2))
                             r = ref;
@@ -102,13 +123,11 @@ classdef LinePlanner < Planner
                             r = ref;
                         end
                     end
-                    
                 else
                     if(obj.direction < 0)
                         if(r(1) < ref(1))
                             r = ref;
                         end
-                        
                     else
                         if(r(1) > ref(1))
                             r = ref;
@@ -127,17 +146,20 @@ classdef LinePlanner < Planner
                 
                 r = obj.initialize_old_reference(p); % calculate another line
                 hold on;
-                plot(-2:0.1:2.5, obj.line(-2:0.1:2.5))
-                
+                %plot(-2:0.1:2.5, obj.line(-2:0.1:2.5))
             end
             theta = atan2(r(2) - p(2),r(1) - p(1));
+            
+            
             
         end
         
         function r = compute_next_reference(obj, p)
             r = obj.points(obj.point_iterator:obj.point_iterator+1)'; % get the not intermediate reference
             % computentersections of circles and lines in Cartesian plane
-            [xout,yout] = linecirc(obj.slope, obj.intercept,p(1), p(2), obj.radius);
+            [xout,yout] = linecirc(obj.slope, obj.intercept, p(1), p(2), obj.radius);
+            hold on
+            %plot(p(1):-0.1:-2, obj.line(p(1):-0.1:-2))
             if(isnan(xout(1)) || isnan(yout(1))) % if it can not be found compute a different line
                 if(r(1) - p(1) > 0)
                     obj.direction = 1;

@@ -98,7 +98,7 @@ classdef Phisical_Layer < handle
                         x = (obj.positions(1, i) + obj.positions(1, j))/2;
                         y = (obj.positions(2, i) + obj.positions(2, j))/2;
                         plot([obj.positions(1, i); obj.positions(1, j)], [obj.positions(2, i); obj.positions(2, j)],':k');
-                        text(x, y, sprintf('%d', obj.c_matrix_sent(i, j)));
+                        text(x, y, sprintf('%d', obj.c_matrix_sent(i, j) + obj.c_matrix_sent(j, i)));
                     end
                 end
             end
@@ -108,42 +108,67 @@ classdef Phisical_Layer < handle
             At = obj.c_matrix_sent.';
             m  = (1:size(At,1)).' >= (1:size(At,2));
             v  = At(m);
-            out = sum(v)*2;
+            
+            At = obj.c_matrix_sent;
+            m  = (1:size(At,1)).' >= (1:size(At,2));
+            v1  = At(m);
+            out = sum(v) + sum(v1);
         end
+        
         
         function out = get_total_packets_recived(obj)
             At = obj.c_matrix_recived.';
             m  = (1:size(At,1)).' >= (1:size(At,2));
             v  = At(m);
-            out = sum(v)*2;
+            
+            At = obj.c_matrix_recived;
+            m  = (1:size(At,1)).' >= (1:size(At,2));
+            v1  = At(m);
+            out = sum(v) + sum(v1);
         end
         
         function out = get_total_packets_lost(obj)
             At = (obj.c_matrix_sent - obj.c_matrix_recived).';
             m  = (1:size(At,1)).' >= (1:size(At,2));
             v  = At(m);
-            out = sum(v)*2;
+            
+            At = (obj.c_matrix_sent - obj.c_matrix_recived);
+            m  = (1:size(At,1)).' >= (1:size(At,2));
+            v1  = At(m);
+            out = sum(v) + sum(v1);
         end
         
         function out = get_total_bytes_sent(obj)
             At = obj.c_matrix_bytes_sent.';
             m  = (1:size(At,1)).' >= (1:size(At,2));
             v  = At(m);
-            out = sum(v)*2;
+            
+            At = obj.c_matrix_bytes_sent;
+            m  = (1:size(At,1)).' >= (1:size(At,2));
+            v1  = At(m);
+            out = sum(v) + sum(v1);
         end
         
         function out = get_total_bytes_recived(obj)
             At = obj.c_matrix_bytes_recived.';
             m  = (1:size(At,1)).' >= (1:size(At,2));
             v  = At(m);
-            out = sum(v)*2;
+            
+            At = obj.c_matrix_bytes_recived;
+            m  = (1:size(At,1)).' >= (1:size(At,2));
+            v1  = At(m);
+            out = sum(v) + sum(v1);
         end
         
         function out = get_total_bytes_lost(obj)
             At = (obj.c_matrix_bytes_sent - obj.c_matrix_bytes_recived).';
             m  = (1:size(At,1)).' >= (1:size(At,2));
             v  = At(m);
-            out = sum(v)*2;
+            
+            At = (obj.c_matrix_bytes_sent - obj.c_matrix_bytes_recived);
+            m  = (1:size(At,1)).' >= (1:size(At,2));
+            v1  = At(m);
+            out = sum(v) + sum(v1);
         end
         
         function out = get_sent_packets_per_second(obj)

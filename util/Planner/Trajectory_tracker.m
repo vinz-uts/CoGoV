@@ -10,7 +10,7 @@ classdef Trajectory_tracker
     end
     
     methods
-        function obj = Trajectory_tracker(xSamples, ySamples, time_interval,sF,xy,radius)
+        function obj = Trajectory_tracker(xSamples, ySamples, time_interval, sF, xy, radius)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             if(nargin < 4)

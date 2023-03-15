@@ -170,7 +170,7 @@ classdef Polar_trajectory_planner < Planner
             theta = 0:0.01:2*pi + 0.01;
             rho = obj.evaluate(theta);
             [x, y] = obj.polar2xy(rho, theta);
-            plot(x, y, strcat(':', color));
+            plot(x, y, strcat(':', color), "Linewidth", 1);
             tf = ishold;
             hold on;
 %             plot(obj.center(1), obj.center(2), strcat('o', color));

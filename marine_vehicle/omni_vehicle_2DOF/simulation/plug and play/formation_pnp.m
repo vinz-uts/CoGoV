@@ -1,7 +1,6 @@
 % This scenario shows how to deal with neighbors while performing a plug in
 % operation 
 
-
 %% Clear workspace
 clear;  close all;
 

@@ -189,27 +189,27 @@ for t=1:NT
     end
     
     drawnow;
-    dist12 =[dist12, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
-    dist23 =[dist23, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
-    dist13 =[dist13, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
+%     dist12 =[dist12, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{2}.ctrl_sys.sys.x(1:2,end)))];
+%     dist23 =[dist23, norm((vehicle{2}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
+%     dist13 =[dist13, norm((vehicle{1}.ctrl_sys.sys.x(1:2,end)-vehicle{3}.ctrl_sys.sys.x(1:2,end)))];
 end
 
-figure;
-subplot(3, 1, 1);
-plot(0:Tc_cg:Tf-Tc_cg, dist12);
-title('Distance between vehicle 1 and vehicle 2');
-xlabel('time [s]');
-ylabel('distance [m]');
-
-subplot(3, 1, 2);
-plot(0:Tc_cg:Tf-Tc_cg, dist23);
-title('Distance between vehicle 2 and vehicle 3');
-xlabel('time [s]');
-ylabel('distance [m]');
-
-subplot(3, 1, 3);
-plot(0:Tc_cg:Tf-Tc_cg, dist13);
-title('Distance between vehicle 1 and vehicle 3');
-xlabel('time [s]');
-ylabel('distance [m]');
+% figure;
+% subplot(3, 1, 1);
+% plot(0:Tc_cg:Tf-Tc_cg, dist12);
+% title('Distance between vehicle 1 and vehicle 2');
+% xlabel('time [s]');
+% ylabel('distance [m]');
+% 
+% subplot(3, 1, 2);
+% plot(0:Tc_cg:Tf-Tc_cg, dist23);
+% title('Distance between vehicle 2 and vehicle 3');
+% xlabel('time [s]');
+% ylabel('distance [m]');
+% 
+% subplot(3, 1, 3);
+% plot(0:Tc_cg:Tf-Tc_cg, dist13);
+% title('Distance between vehicle 1 and vehicle 3');
+% xlabel('time [s]');
+% ylabel('distance [m]');
 

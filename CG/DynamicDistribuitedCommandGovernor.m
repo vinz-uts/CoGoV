@@ -207,25 +207,27 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
         function add_swarm_cnstr(obj,id,varargin)
             % add_swarm_cnstr - add 2 vehicles constraints
             % id := neighbour's ID
-            % varargin := 'proximity',    d_max, ...
-            %             'anticollision',d_min
+            % varargin := 'proximity',         d_max, ...
+            %             'anticollision',     d_min
+            %             'formation',         [x_dist, y_dist]
             cnstr = zeros(4,2*obj.nc);
             cnstr(1,1) =  1;    cnstr(1,obj.nc+1) = -1;
             cnstr(2,1) = -1;    cnstr(2,obj.nc+1) =  1;
             cnstr(3,2) =  1;    cnstr(3,obj.nc+2) = -1;
             cnstr(4,2) = -1;    cnstr(4,obj.nc+2) =  1;
             
-            validnames = {'proximity','anticollision'};
+            validnames = {'proximity','anticollision', 'formation'};
             
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
-            proximity_cnstr_flag = 0;
+            proximity_keeping_cnstr_flag = 0;
+            formation_constr = 0;
             
             for name = params
                 validatestring(name{:}, validnames); % raise an Exception if the name is not valid
                 pos = strmatch(name{:}, params);
                 if strcmp(name{:},validnames{1}) % Proximity constraints
-                    proximity_cnstr_flag = 1;
+                    proximity_keeping_cnstr_flag = 1;
                     if ~isempty(obj.T)
                         obj.T  = [ obj.T zeros(size(obj.T,1),obj.nc);
                             cnstr(:,1:obj.nc) zeros(size(cnstr,1),size(obj.T,2)-obj.nc) cnstr(:,obj.nc+1:end) ];
@@ -243,19 +245,38 @@ classdef DynamicDistribuitedCommandGovernor < DistribuitedCommandGovernor
                         obj.U = cnstr;
                         obj.hi = values{pos}.*ones(4,1);
                     end
+                 elseif strcmp(name{:},validnames{3}) % Formation Keeping
+                    proximity_keeping_cnstr_flag = 1;
+                    formation_constr = 1;
+                    dist_xy = values{pos};
+                    eps = 0.4;
+                    if ~isempty(obj.T)
+                        obj.T  = [ obj.T zeros(size(obj.T,1),obj.nc);
+                                   cnstr(:,1:obj.nc) zeros(size(cnstr,1),size(obj.T,2)-obj.nc) cnstr(:,obj.nc+1:end)];
+                        obj.gi = [obj.gi; dist_xy(1)+eps; -dist_xy(1)+eps; dist_xy(2)+eps; -dist_xy(2)+eps];
+                    else
+                        obj.T  = cnstr;
+                        obj.gi = [dist_xy(1)+eps; -dist_xy(1)+eps; dist_xy(2)+eps; -dist_xy(2)+eps];
+                    end
                 end
             end
             
-            if ~proximity_cnstr_flag % extend T matrix
-                obj.T = [ obj.T zeros(size(obj.T,1),obj.nc) ];
+             if(not(ismember(id, obj.neigh)))
+                if ~proximity_keeping_cnstr_flag % extend T matrix
+                    obj.T = [ obj.T zeros(size(obj.T,1),obj.nc) ];
+                end
+                
+                obj.Phi = blkdiag(obj.Phi,obj.Phi_);
+                obj.G = blkdiag(obj.G,obj.G_);
+                obj.Hc = blkdiag(obj.Hc,obj.Hc_);
+                obj.L = blkdiag(obj.L,obj.L_);
+                [obj.Rk, obj.bk] = obj.compute_matrix();
+                if(formation_constr)
+                    obj.Phi(end-11:end-6, end-5:end) = obj.Phi_;
+                    obj.Phi(end-5:end, end-11:end-6) = obj.Phi_;
+                end
+                obj.neigh = [obj.neigh id]; % add the 'id'-th vehicle to the neighbour list
             end
-            obj.Phi = blkdiag(obj.Phi,obj.Phi_);
-            obj.G = blkdiag(obj.G,obj.G_);
-            obj.Hc = blkdiag(obj.Hc,obj.Hc_);
-            obj.L = blkdiag(obj.L,obj.L_);
-            [obj.Rk, obj.bk] = obj.compute_matrix();
-            
-            obj.neigh = [obj.neigh id]; % add the 'id'-th vehicle to the neighbour list
         end
         
         function remove_swarm_cnstr(obj,id)

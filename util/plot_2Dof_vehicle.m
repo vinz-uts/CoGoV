@@ -1,4 +1,4 @@
-function  plot_2Dof_vehicle(vehicle, r, d_min, varargin)
+function plot_struct = plot_2Dof_vehicle(vehicle, r, d_min, varargin)
     
     hold_state = ishold;
     
@@ -39,10 +39,10 @@ function  plot_2Dof_vehicle(vehicle, r, d_min, varargin)
         end
     end
     
-    
+    plot_struct = [];
     % Trajectory plot
-    plot(vehicle.ctrl_sys.sys.x(1,:), vehicle.ctrl_sys.sys.x(2,:), strcat(plot_pair{6, 2}, plot_pair{1, 2}),...
-         plot_pair{2, 1}, plot_pair{2, 2});
+    plot_struct = [plot_struct, plot(vehicle.ctrl_sys.sys.x(1,:), vehicle.ctrl_sys.sys.x(2,:), strcat(plot_pair{6, 2}, plot_pair{1, 2}),...
+         plot_pair{2, 1}, plot_pair{2, 2})];
     hold on;
     if(not(isempty(plot_pair{9,2})))
         axis(plot_pair{9,2});
@@ -58,7 +58,7 @@ function  plot_2Dof_vehicle(vehicle, r, d_min, varargin)
         theta = 0:0.1:2*pi+0.1;
         x1 = vehicle.ctrl_sys.sys.x(1,end) + d_min*cos(theta);
         y1 = vehicle.ctrl_sys.sys.x(2,end) + d_min*sin(theta);
-        plot(x1,y1, strcat(plot_pair{6, 2}, plot_pair{1, 2}));
+        plot(x1,y1, strcat(plot_pair{6, 2}, plot_pair{1, 2}), 'LineWidth', 0.8);
     end
     
     if(not(isempty(r)))

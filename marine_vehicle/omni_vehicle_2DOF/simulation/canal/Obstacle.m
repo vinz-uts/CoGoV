@@ -39,14 +39,16 @@ classdef Obstacle < handle
             %       (x2, y2)---------------(x3, y3)
             % x goes from x1 to x4 and y goes from y2 to y1
             
-            x = obj.vertices(1, 1):0.1:obj.vertices(1, 4);
-            y = obj.vertices(2, 2):0.1:obj.vertices(2, 1);
-            
-            % plot
-            plot(ones(length(y))*x(1), y, c);
-            plot(x, ones(length(x))*y(1), c);
-            plot(ones(length(y))*x(end), y, c);
-            plot(x, ones(length(x))*y(end), c);
+%             x = obj.vertices(1, 1):0.1:obj.vertices(1, 4);
+%             y = obj.vertices(2, 2):0.1:obj.vertices(2, 1);
+%             
+%             % plot
+%             plot(ones(length(y))*x(1), y, c);
+%             plot(x, ones(length(x))*y(1), c);
+%             plot(ones(length(y))*x(end), y, c);
+%             plot(x, ones(length(x))*y(end), c);
+            shape = polyshape(obj.vertices(1, :), obj.vertices(2, :));
+            plot(shape, 'FaceColor', 'red');
             
             if(h)
                 hold on;
