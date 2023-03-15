@@ -1,22 +1,22 @@
-classdef ControlledSystem_LQI < handle
-    %% CONTROLLED SYSTEM LQI
+classdef ControlledSystem_LQI < ControlledSystem
+    %% CONTROLLED SYSTEM LQI CLASS
     %  Define a time-discrete dynamic closed-loop system with a state-space model:
     %  z(k+1) = ?*z(k) + G*r(k)
     %   y(k)  = Hy*z(k)
     %   c(k)  = Hc*z(k) + L*r(k)
      
     properties
-        sys % SystemModel
-        Tc % sampling time
-        Fa % Optimal feedback control gain
-        Cy % tracking system outputs
-        Phi % closed-loop state-space model ? matrix
-        G % closed-loop state-space model G matrix
-        Hc % closed-loop state-space model Hc matrix
-        L % closed-loop state-space model L matrix
-        xc % simulation controller-states array
-        r % simulation references array
-        xci % controller initial conditions
+        %sys % SystemModel
+        %Tc % sampling time
+        %Fa % Optimal feedback control gain
+        %Cy % tracking system outputs
+        %Phi % closed-loop state-space model Φ matrix
+        %G % closed-loop state-space model G matrix
+        %Hc % closed-loop state-space model Hc matrix
+        %L % closed-loop state-space model L matrix
+        %xc % simulation controller-states array
+        %r % simulation references array
+        %xci % controller initial conditions
         int % Discrete integrator for error integration or accumulation
     end
     
@@ -36,7 +36,7 @@ classdef ControlledSystem_LQI < handle
             obj.Hc = Hc;
             obj.L = L;
             obj.xci = zeros(size(Fa,1),1);
-            obj.int = Discrete_integrator(obj.xci, Tc, 1); % Tc = 1 accumulation D-LQI, Tc = Tc_sys integration R stability
+            obj.int = DiscreteIntegrator(obj.xci, Tc, 1); % Tc = 1 accumulation D-LQI, Tc = Tc_sys integration R stability
         end
             
         
@@ -49,7 +49,7 @@ classdef ControlledSystem_LQI < handle
             N = ceil(T/(obj.Tc)); % simulation steps number
             e = obj.xci; % initial error value
 
-            obj.int.setinstate(e); % update integrator states
+            obj.int.set_initial_state(e); % update integrator states
             nt = length(obj.sys.t); % length of last simulation
             %nx = size(obj.sys.A,1);
             nx = obj.sys.nx;

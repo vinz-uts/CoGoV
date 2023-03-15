@@ -1,5 +1,5 @@
-classdef StateSpaceSystem < handle
-    %% STATE SPACE SYSTEM
+classdef StateSpaceSystem < ModelSystem
+    %% STATE SPACE SYSTEM CLASS
     %  Define a time-continuous dynamic system with a state-space model:
     %       dx = A*x + B*u
     %        y = C*x + D*u

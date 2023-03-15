@@ -28,7 +28,38 @@ vehicle{1}.init_position(1,0.5);
 vehicle{2} = ControlledVehicle(ControlledSystem_LQI(StateSpaceSystem(A,B),Tc,Fa,Cy,Phi,G,Hc,L));
 vehicle{2}.init_position(0.1,0.2);
 
-%% Planners Initialization 
+
+%% Net configuration
+%   1
+%  / \
+% 2   3
+adj_matrix = [-1  1 ;
+    1 -1] ;
+
+%% Vehicles constraints
+% Vehicles swarm position constraints
+% ||(x,y)_i-(x,y)_j|| > d_max
+d_min = 0.05; % minimum distance between vehicles - [m] Con 0.2 gli da come riferimento [0 0]
+
+% Vehicles constraints
+T_max = 100; % max abs of motor thrust - [N]
+%% Command Governor parameters
+Psi = eye(2); % vehicle's references weight matrix
+k0 = 10; % prediction horizon
+
+%% Dynamic Command Governor
+for i=1:N
+    vehicle{i}.cg = DynamicDistribuitedCommandGovernor(i,Phi,G,Hc,L,Psi,k0, 'gurobi');
+    vehicle{i}.cg.add_vehicle_cnstr('thrust',T_max);
+    for j=1:N
+        if adj_matrix(i,j) == 1 % i,j is neighbour
+            % Uncomment to avoid collision
+             vehicle{i}.cg.add_swarm_cnstr(j,'anticollision',d_min);
+        end
+    end
+end
+
+%% Planner
 %%%%%%%%%%%%%  Loading data in order simulate the oil stain
 % Loading set of points
 load('xSamples','xSamples');
@@ -91,7 +122,7 @@ for i=1:N
     end
 end
 
-%%%%%% end of loading data section for planners 
+%%%%%% end of loading data section for planners
 
 
 vehicle{1}.planner =  ptp1(1);
@@ -131,8 +162,8 @@ for t=1:NT
             xc = vehicle{i}.ctrl_sys.xci; % controller current state
             xa = [x;xc];
             g_n = [];
-            
-            
+
+
             for j=1:N
                 if adj_matrix(i,j) == 1 % i,j is neighbour
                     g_n = [g_n;vehicle{j}.g];
@@ -141,36 +172,36 @@ for t=1:NT
                     xa = [xa;x;xc];
                 end
             end
-            
+
             %%% Planners are manually changed in order to emulate the
-            % changing shape of the oil stain 
-            
+            % changing shape of the oil stain
+
             if(t==40)
                 vehicle{1}.planner = ptp1(2);
                 vehicle{2}.planner= ptp2(2);
             end
-            
+
             if(t==65)
                 vehicle{1}.planner = ptp1(3);
                 vehicle{2}.planner = ptp2(3);
             end
-            
+
             if(t==90)
                 vehicle{1}.planner = ptp1(4);
                 vehicle{2}.planner = ptp2(4);
             end
-            
+
             if(t==115)
                 vehicle{1}.planner = ptp1(5);
                 vehicle{2}.planner = ptp2(5);
             end
-            
+
             r{i} = vehicle{i}.planner.compute_reference(vehicle{i},xa);
-            
+
             g = vehicle{i}.cg.compute_cmd(xa, r{i}, g_n);
             %g = r{i}
             if ~isempty(g)
-                vehicle{i}.g = g;  
+                vehicle{i}.g = g;
             else
                 disp('WARN: old references');
                 t,i
@@ -178,10 +209,10 @@ for t=1:NT
             if(i == 1)
                 g_list = [g_list, vehicle{i}.g];
             end
-            
+
         end
     end
-    
+
      for i=1:N
         switch i
             case 1
@@ -190,15 +221,15 @@ for t=1:NT
                 u2 = [u2, vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg)];
         end
     end
-    
+
     for i=1:N
         vehicle{i}.ctrl_sys.sim(vehicle{i}.g,Tc_cg);
     end
     round = rem(round,length(colors))+1;
     %
-    
+
    %%%%%%% live plot %%%%%%%
-    figure(1);  
+    figure(1);
     clf;
     grid on;
     title('Frontal Collision Simulation');
@@ -208,20 +239,20 @@ for t=1:NT
     plot_struct = [];
     hold on;
     for k=1:N
-        
+
         plot(vehicle{k}.planner)
     	% Plot vehicles trajectory
         plot_struct = [plot_struct, plot(vehicle{k}.ctrl_sys.sys.x(1,:),vehicle{k}.ctrl_sys.sys.x(2,:), strcat(plot_color(k), '-.'), 'LineWidth', 3)];
-        
-        % Plot vehicles position 
+
+        % Plot vehicles position
         plot(vehicle{k}.ctrl_sys.sys.x(1,end),vehicle{k}.ctrl_sys.sys.x(2,end), strcat(plot_color(k), 'o'),...
             'MarkerFaceColor', plot_color(k), 'MarkerSize', 8);
-        
+
         % Plot vehicles CG references
         plot_struct = [plot_struct, plot(vehicle{k}.g(1), vehicle{k}.g(2), strcat(plot_color(k), 'x'), 'LineWidth', 1.5)];
-        
+
     end
-    
+
     legend(plot_struct, legend_list,  'Location', 'northwest')
     drawnow;
     cdata = print('-RGBImage','-r300');
@@ -237,8 +268,8 @@ nx = 4;
 u = [u1; u2];
 for i=1:N
     data = struct("x", [vehicle{i}.ctrl_sys.sys.x; vehicle{i}.ctrl_sys.xc], "u", u((i-1)*2+1:(i-1)*2+2, :));
-                  
-                  
+
+
     vehicle_data = [vehicle_data, data];
 end
 sim_data = struct('system', vehicle_data, 'time', (1:NT)*Tc, "Tc", Tc, 'd_min', d_min, 'Max_x', [], "Max_y", [], "T_max", T_max, 'g', g_list);
@@ -249,4 +280,3 @@ plot(0:Tc_cg:Tf-Tc_cg, dist);
 title('Distance between vehicle 1 and vehicle 2');
 xlabel('time [s]');
 ylabel('distance [m]');
-

@@ -1,5 +1,5 @@
-classdef NonlinearSystem < handle
-    %% NONLINEAR SYSTEM
+classdef NonlinearSystem < ModelSystem
+    %% NONLINEAR SYSTEM CLASS
     %  Define a time-continuous nonlinear dynamic system:
     %       dx = f(x,u)
     %        y = g(x,u)
