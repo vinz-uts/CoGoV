@@ -1,53 +1,41 @@
-% Copyright 2021 - CoGoV.
-% Licensed under the Academic Free License, Version 3.0 (the "License");
-% you may not use this file except in compliance with the License.
-% You may obtain a copy of the License at
-% https://opensource.org/license/afl-3-0-php/
-% Unless required by applicable law or agreed to in writing, software
-% distributed under the License is distributed on an "AS IS" BASIS,
-% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-% See the License for the specific language governing permissions and
-% limitations under the License.
-% 
-% Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
-% Credits: Alessandro Casavola, Francesco Tedesco
-
-
 classdef StateSpaceSystem < ModelSystem
-    %% STATE SPACE SYSTEM CLASS
-    %  Define a time-continuous dynamic system with a state-space model:
-    %       dx = A*x + B*u
-    %        y = C*x + D*u
+    %STATESPACESYSTEM class
+    %   Define a time-continuous dynamic system with a state-space model:
+    %      dx = A*x + B*u
+    %       y = C*x + D*u
+    % 
+    %   sys = StateSpaceSystem(A,B,C,D,xi) initialize a state-space model with A,B,C,D
+    %   matrices and xi initial conditions.
+    %
+    %   sys = StateSpaceSystem(A,B,C,D) initialize a state-space model with A,B,C,D
+    %   matrices and 0 initial conditions.
+    %
+    %   sys = StateSpaceSystem(A,B) initialize a state-space model with A,B,eye(n),0 
+    %   matrices and 0 initial conditions.
+    %
+    %  Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
+    %  Credits: Alessandro Casavola, Francesco Tedesco
+    %  Copyright 2021 - CoGoV.
     
     properties
-        A  % state-space model A matrix
-        B  % state-space model B matrix
-        C  % state-space model C matrix
-        D  % state-space model D matrix
-        nx % state dimension
-        nu % input dimension
-        ny % output dimension
-        t  % simulation time array
-        u  % simulation inputs array
-        x  % simulation states array
-        y  % simulation outputs array
-        xi % initial conditions
+        A  % State-space model A matrix
+        B  % State-space model B matrix
+        C  % State-space model C matrix
+        D  % State-space model D matrix
+        nx % State dimension
+        nu % Input dimension
+        ny % Output dimension
+        t  % Simulation time array
+        u  % Simulation inputs array
+        x  % Simulation states array
+        y  % Simulation outputs array
+        xi % Initial conditions
     end
     
     
     methods
         function obj = StateSpaceSystem(A,B,C,D,xi)
-            % StateSpaceSystem - Constructor
-            % Create an istance of a state-space system.
-            % >> sys = StateSpaceSystem(A,B,C,D,xi)
-            %    Initialize a state-space model with A,B,C,D matrix and xi
-            %    initial conditions.
-            % >> sys = StateSpaceSystem(A,B,C,D)
-            %    Initialize a state-space model with A,B,C,D matrix and 0
-            %    initial conditions.
-            % >> sys = StateSpaceSystem(A,B)
-            %    Initialize a state-space model with A,B,eye(n),0 matrix
-            %    and 0 initial conditions.
+            %StateSpaceSystem - Constructor
             if nargin >= 2
                 obj.A = A;
                 obj.B = B;
@@ -74,9 +62,10 @@ classdef StateSpaceSystem < ModelSystem
             
         
         function sim(obj,u,T)
-            % sim - Simulate the system
-            %   Simulate the system for T seconds with initial conditions xi and
-            %   constant input u.
+            %SIM(u,T) simulate the system for T seconds with constant input u.
+            %   Simulation start from the last initial condition xi and from
+            %   the last time value. Results of simulation are stored in
+            %   t, u, x, y class variables.  
             Ti = 0;
             if ~isempty(obj.t)
                 Ti = obj.t(end);
@@ -102,24 +91,23 @@ classdef StateSpaceSystem < ModelSystem
         
         
         function reset(obj,xi)
-           % reset - Reset the system
-           % Reset the system at t=0 with initial conditions xi.
-           if nargin < 2
-               if ~isempty(obj.x)
+            %RESET() reset the system at t=0 with initial conditions 0.
+            %
+            %RESET(xi) reset the system at t=0 with initial conditions xi.
+            if nargin < 2
+                if ~isempty(obj.x)
                     obj.xi = obj.x(:,1);
                 else
                     obj.xi = zeros(obj.nx,1);
                end
-           else
-               obj.xi = xi;
-           end
-           obj.t = [];
-           obj.u = [];
-           obj.x = [];
-           obj.y = [];
-        end
-        
+            else
+                obj.xi = xi;
+            end
+            obj.t = [];
+            obj.u = [];
+            obj.x = [];
+            obj.y = [];
+        end        
     end
-    
 end
 

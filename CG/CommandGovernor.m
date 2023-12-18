@@ -1,35 +1,33 @@
-% Copyright 2021 - CoGoV.
-% Licensed under the Academic Free License, Version 3.0 (the "License");
-% you may not use this file except in compliance with the License.
-% You may obtain a copy of the License at
-% https://opensource.org/license/afl-3-0-php/
-% Unless required by applicable law or agreed to in writing, software
-% distributed under the License is distributed on an "AS IS" BASIS,
-% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-% See the License for the specific language governing permissions and
-% limitations under the License.
-% 
-% Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
-% Credits: Alessandro Casavola, Francesco Tedesco
-
-
 classdef CommandGovernor < handle
-    %% COMMAND GOVERNOR
-    %  Command Governor computes the nearest reference g to r that statify
-    %  the constrains.
-    
+    %COMMANDGOVERNOR class
+    %   Command Governor computes the nearest reference g to r that statify
+    %   the constrains.
+    %  
+    %   cg = COMMANDGOVERNOR(Phi,G,Hc,L,Psi,k0) creates an instance of 
+    %      Command Governor with the closed-loop matrices Phi,G,Hc,L. Psi is
+    %      the reference weight matrix, k0 is the prediction horizon.
+    %  
+    %   cg = COMMANDGOVERNOR(Phi,G,Hc,L,Psi,k0, solver) creates an instance of 
+    %      Command Governor with the closed-loop matrices Phi,G,Hc,L. Psi is
+    %      the reference weight matrix, k0 is the prediction horizon. A different
+    %      solver can be specified with the last parameter. Default solver is 'bmibnb'.
+    % 
+    %  Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
+    %  Credits: Alessandro Casavola, Francesco Tedesco
+    %  Copyright 2021 - CoGoV.
+
     properties
-        Phi % closed-loop model Φ matrix
-        G % closed-loop model G matrix
-        Hc % closed-loop model Hc matrix
-        L % closed-loop model L matrix
-        T % constraints matrix
-        gi % constraints vector
-        Psi % reference weight Ψ matrix
-        k0 % prediction steps number
-        solver_name % name of the numerical solver
-        Rk % Rk matrix for code speed up
-        bk % bk matrix for code speed up
+        Phi         % Closed-loop model Φ matrix
+        G           % Closed-loop model G matrix
+        Hc          % Closed-loop model Hc matrix
+        L           % Closed-loop model L matrix
+        T           % Constraints matrix
+        gi          % Constraints vector
+        Psi         % Reference weight Ψ matrix
+        k0          % Prediction steps number
+        solver_name % Name of the numerical solver
+        Rk          % Rk matrix for code speed up
+        bk          % bk matrix for code speed up
     end
     
     properties (Constant)
@@ -60,9 +58,9 @@ classdef CommandGovernor < handle
         
         
         function [g, ris] = compute_cmd(obj,x,r)
-            % compute_cmd - calculate the reference g.
-            % Calculate the nearest reference g to r start from initial
-            % conditions x.
+            %COMPUTE_CMD - calculate the reference g.
+            %   [g,ris] = COMPUTE_CMD(x,r) Calculate the nearest reference g to r start from initial
+            %   conditions x. Output of optimization problem solving is returned in ris.
             
             w = sdpvar(length(r),1);
             
@@ -96,7 +94,7 @@ classdef CommandGovernor < handle
     
     methods (Access = protected)
         function check_solver(obj, solver_name)
-            % check_solver - check if solver is available
+            %CHECK_SOLVER - check if solver is available
             % If not present, default solver is setted
             
             obj.solver_name = obj.default_solver;
@@ -113,24 +111,19 @@ classdef CommandGovernor < handle
         end % check_solver
         
         function [Rk, bk] = compute_matrix(obj, Phi, Hc, G, L, k0)
-            % code optimization
-            % computation of matrices for direct state evolution
-            % output:
-            % - Rk : is a three-dimensional matrix in which every 'slice' is
-            %           related to a k-prediction.
-            %           Rk(:, :, k) is multiplied by w
-            % - bk : is a three-dimensional matrix in which every 'slice' is
-            %           related to a k-prediction.
-            %           this term (premultiplied by x0) has to be substructed
-            %           to the known term
+            %COMPUTE_MATRIX computes Rk, bk matrices for code optimization
+            %    Computation of matrices for direct state evolution
+            %       * Rk : is a three-dimensional matrix in which every 'slice' is
+            %         related to a k-prediction. Rk(:, :, k) is multiplied by w.
+            %       * bk : is a three-dimensional matrix in which every 'slice' is
+            %         related to a k-prediction. This term (premultiplied by x0) has
+            %         to be substructed to the known term.
             
             % preallocation for code speed up
-            
             if(nargin>1)
                 bk = zeros(length(Hc(:, 1)), length(Phi(1, :)), k0);
                 [m, n] = size(L);
                 Rk = zeros(m, n, k0);
-                
                 for k = 1:k0 % for each prediction compute a Rk, bk
                     bk(:, :, k) = (Hc*(Phi^k));
                     
@@ -144,7 +137,6 @@ classdef CommandGovernor < handle
                 bk = zeros(length(obj.Hc(:, 1)), length(obj.Phi(1, :)), obj.k0);
                 [m, n] = size(obj.L);
                 Rk = zeros(m, n, obj.k0);
-                
                 for k = 1:obj.k0 % for each prediction compute a Rk, bk
                     bk(:, :, k) = (obj.Hc*(obj.Phi^k));
                     

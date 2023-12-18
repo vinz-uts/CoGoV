@@ -9,3 +9,12 @@ slprj/
 *.autosave
 *.asv
 *.slxc
+*.mat
+
+*.fig
+*.eps
+*.svg
+*.avi
+
+*.rar
+*.zip

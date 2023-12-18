@@ -1,55 +1,43 @@
-% Copyright 2021 - CoGoV.
-% Licensed under the Academic Free License, Version 3.0 (the "License");
-% you may not use this file except in compliance with the License.
-% You may obtain a copy of the License at
-% https://opensource.org/license/afl-3-0-php/
-% Unless required by applicable law or agreed to in writing, software
-% distributed under the License is distributed on an "AS IS" BASIS,
-% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-% See the License for the specific language governing permissions and
-% limitations under the License.
-% 
-% Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
-% Credits: Alessandro Casavola, Francesco Tedesco
-
-
 classdef NonlinearSystem < ModelSystem
-    %% NONLINEAR SYSTEM CLASS
-    %  Define a time-continuous nonlinear dynamic system:
+    %NONLINEARSYSTEM class
+    %   Define a time-continuous nonlinear dynamic system:
     %       dx = f(x,u)
     %        y = g(x,u)
+    %
+    %   sys = NONLINEARSYSTEM(f,g,nx,nu,ny,xi) initialize a nonlinear system with state-transition
+    %   matlab function f, output matlab function g and xi as initial.
+    %   conditions. States, Input, Output dimension: nx, nu, ny.
+    %
+    %   sys = NONLINEARSYSTEM(f,g,nx,nu,ny) initialize a nonlinear system with state-transition
+    %   matlab function f, output matlab function g and 0 as initial conditions. States, Input,
+    %   Output dimension: nx, nu, ny.
+    %
+    %   sys = NONLINEARSYSTEM(f,nx,nu) initialize a nonlinear system with state-transition matlab
+    %   function f, output matlab function 'full_state' and 0 as initial conditions. States, 
+    %   Input dimension: nx, nu (ny=nx).
+    %
+    %  Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
+    %  Credits: Alessandro Casavola, Francesco Tedesco
+    %  Copyright 2021 - CoGoV.
     
     properties
-        f  % state-transition matlab function
-        g  % output matlab function
-        nx % states number
-        nu % inputs number
-        ny % outputs number
-        t  % simulation time array
-        u  % simulation inputs array
-        x  % simulation states array
-        y  % simulation outputs array
-        xi % initial conditions
+        f  % State-transition matlab function
+        g  % Output matlab function
+        nx % States number
+        nu % Inputs number
+        ny % Outputs number
+        t  % Simulation time array
+        u  % Simulation inputs array
+        x  % Simulation states array
+        y  % Simulation outputs array
+        xi % Initial conditions
     end
     
     
     methods
         function obj = NonlinearSystem(f,g,nx,nu,ny,xi)
-            % NonlinearSystem - Constructor
-            % Create an istance of a nonlinear system.
-            % >> sys = NonlinearSystem(f,g,nx,nu,ny,xi)
-            %    Initialize a nonlinear system with state-transition matlab
-            %    function f, output matlab function g and xi as initial
-            %    conditions. States, Input, Output dimension: nx, nu, ny.
-            % >> sys = NonlinearSystem(f,g,nx,nu,ny)
-            %    Initialize a nonlinear system with state-transition matlab
-            %    function f, output matlab function g and 0 as initial
-            %    conditions. States, Input, Output dimension: nx, nu, ny.
-            % >> sys = NonlinearSystem(f,nx,nu)
-            %    Initialize a nonlinear system with state-transition matlab
-            %    function f, output matlab function 'full_state' and 0 as
-            %    initial conditions. States, Input dimension: nx, nu
-            %    (ny=nx).
+            %NONLYNEARSYSTEM - Constructor
+            %   Creates an istance of a nonlinear system.
             obj.f = f;
             if nargin <= 3 % shift params names nx=g, nu=nx
                 obj.g = 'full_state';
@@ -71,9 +59,10 @@ classdef NonlinearSystem < ModelSystem
             
         
         function sim(obj,u,T)
-            % sim - Simulate the system
-            %   Simulate the system for T seconds with initial conditions xi and
-            %   constant input u.
+            %SIM(u,T) simulate the system for T seconds with constant input u.
+            %   Simulation start from the last initial condition xi and from
+            %   the last time value. Results of simulation are stored in
+            %   t, u, x, y class variables.
             Ti = 0;
             if ~isempty(obj.t)
                 Ti = obj.t(end);
@@ -99,8 +88,9 @@ classdef NonlinearSystem < ModelSystem
         
         
         function reset(obj,xi)
-            % reset - Reset the system
-            % Reset the system at t=0 with initial conditions xi.
+            %RESET() reset the system at t=0 with initial conditions 0.
+            %
+            %RESET(xi) reset the system at t=0 with initial conditions xi.
             if nargin < 2
                 if ~isempty(obj.x)
                     obj.xi = obj.x(:,1);

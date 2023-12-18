@@ -1,20 +1,15 @@
-% Copyright 2021 - CoGoV.
-% Licensed under the Academic Free License, Version 3.0 (the "License");
-% you may not use this file except in compliance with the License.
-% You may obtain a copy of the License at
-% https://opensource.org/license/afl-3-0-php/
-% Unless required by applicable law or agreed to in writing, software
-% distributed under the License is distributed on an "AS IS" BASIS,
-% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-% See the License for the specific language governing permissions and
-% limitations under the License.
-% 
-% Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
-% Credits: Alessandro Casavola, Francesco Tedesco
-
-
 classdef LinePlanner < Planner
-    % Planner class used to follow straight lines
+    %LINEPLANNER class used to follow straight lines
+    %   LINEPLANNER(references,option) create a planner which try to achive the
+    %      reference points expressed as a single array. Options can be:
+    %         * 'radius', value [m] - which expresses the radius of the circumference
+    %           used for the calculation of intermediate references.
+    %         * 'tolerance', value [m] - which expresses the tolerance used to 
+    %           understand if the reference was reached.
+    % 
+    %  Authors: Vincenzo D'Angelo, Ayman El Qemmah, Franco Angelo Torchiaro
+    %  Credits: Alessandro Casavola, Francesco Tedesco
+    %  Copyright 2021 - CoGoV.
     
     properties
         points              % A vector containing all points that have to be reached
@@ -27,28 +22,17 @@ classdef LinePlanner < Planner
     
     methods
         function obj = LinePlanner(references, varargin)
-            % Class constructor
-            % references - reference points expressed as a single vector
-            % Valid variable arguments:
-            % radius    - Radius [m] of the circumference used for the calculation of intermediate references
-            % tolerance - tolerance used to understand if the reference was
-            %             reached (in [m])
-            
+            %LINEPLANNER - Constructor
             obj = obj@Planner(varargin{:}); % Superclass constructor
-            
             obj.points = references;
-            
             % Default values
             obj.point_iterator = 1;
             obj.radius = 0.5;
             obj.tol = 0.2;
-            
             %%%%%%% Variable arguments management %%%%%%%
             validnames = {'tolerance', 'radius'};
-            
             nargs = length(varargin);
             params = varargin(1:2:nargs);   values = varargin(2:2:nargs);
-            
             for name = params
                 pos = strcmp(name{:}, params);
                 switch name{:}
@@ -61,6 +45,7 @@ classdef LinePlanner < Planner
             %%%%%%%%%%%%
         end
         
+        
         function r = initialize_old_reference(obj, p) % inherited abstract method
             r = obj.points(obj.point_iterator:obj.point_iterator+1)';
             if(r(1) - p(1) > 0)
@@ -68,7 +53,6 @@ classdef LinePlanner < Planner
             else
                 obj.direction = -1;
             end
-            
             if((r(1) - p(1)) == 0)
                 obj.slope = inf;
                 obj.intercept = p(1);
@@ -81,8 +65,6 @@ classdef LinePlanner < Planner
                 obj.slope = (r(2) - p(2))/(r(1) - p(1));
                 obj.intercept = -obj.slope*p(1) + p(2);
             end
-            
-            
             if(obj.slope == inf)
                 obj.line = @(x) (obj.intercept);
             else
@@ -91,6 +73,7 @@ classdef LinePlanner < Planner
             r = obj.compute_next_reference(p);
         end
         
+
         function [r, theta] = compute_referecence_when_not_reached(obj, p) % inherited abstract method
             r = obj.r_old;
             theta = atan2(r(2) - p(2),r(1) - p(1));
