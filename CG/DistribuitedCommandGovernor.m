@@ -136,7 +136,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
             if(nargin > 4 && nargin < 6)  % Obstacle avoidance           
                 %%% Extracting Self Position to Generate Hyperplane
                 [ay, by] = obj.find_hyperplane_cg(x(1:2), 0.3, r, cloud_points);
-                hype = hyperplane(ay, by);
+                % hype = hyperplane(ay, by);
                 % Vehicles Reference Steady State Constraints 
                 security_margin = 0.1; % in meters
                 cnstr = [cnstr ay'*w(1:2)<=(by-security_margin)];                     
@@ -146,7 +146,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     positions = [x(1:length(obj.Phi_):end), x(2:length(obj.Phi_):end)]';
                     positions = positions(:, 1:2);
                     [ay, by] = obj.find_hyperplane_cg(positions, 0.3, r, cloud_points);
-                    hype = hyperplane(ay, by);
+                    % hype = hyperplane(ay, by);
                     % Vehicles Reference Steady State Constraints 
                     security_margin = 0.1; % in meters
                     cnstr = [cnstr ay'*w(1:2)<=(by-security_margin)];
@@ -154,7 +154,7 @@ classdef DistribuitedCommandGovernor < CommandGovernor
                     positions = [x(1:length(obj.Phi_):end), x(2:length(obj.Phi_):end)]';
                     positions = positions(:, 1);
                     [ay,by] = obj.find_hyperplane_cg(positions, 0.3, r, cloud_points, hyp);
-                    hype = hyperplane(ay, by);
+                    % hype = hyperplane(ay, by);
                     % Vehicles Reference Steady State Constraints 
                     security_margin = 0.1; % in meters
                     cnstr = [cnstr ay'*w(1:2)<=(by-security_margin)];

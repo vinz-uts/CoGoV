@@ -8,6 +8,9 @@ addpath(genpath(fullfile(pwd,'CG')));
 %% add util/ with subfolders
 addpath(genpath(fullfile(pwd,'util')));
 
+%% add tbxmanager/ with subfolders if it does exists
+addpath(genpath(fullfile(pwd,'tbxmanager')));
+
 %% add marine_vehicle/ with subfolders (models and examples)
 addpath(genpath(fullfile(pwd,'marine_vehicle')));
 
